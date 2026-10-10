@@ -4,7 +4,7 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
-Work is on `feat/results-toolkit-foundation`. The starting checkout had one initial commit and a user-added `/.private/` ignore rule, retained in this change. All three private inputs are present in the original checkout and none are tracked. No existing project license was found. Licensing remains an owner decision; no terms have been selected on the owner's behalf.
+Work is on `feat/results-toolkit-foundation`. Foundation checkpoint `de5fa0f` and reporting checkpoint `dc6132f` are pushed. [Draft PR #1](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/pull/1) records scope and acceptance gaps. The starting checkout had one initial commit and a user-added `/.private/` ignore rule, retained in this change. All three private inputs are present in the original checkout and none are tracked. No existing project license was found. Licensing remains an owner decision; no terms have been selected on the owner's behalf.
 
 | Slice | Implemented | Offline proof | Appliance proof | Desktop proof |
 |---|---|---|---|---|
@@ -47,7 +47,7 @@ Work is on `feat/results-toolkit-foundation`. The starting checkout had one init
 - [ ] Record hosted CI results and native Linux/macOS credential proof separately.
 - [ ] Run bounded live discovery/export with saved credential; use a compatible Load pair when available.
 - [ ] Open/refresh snapshot and live report in target Desktop and reconcile numeric source checks.
-- [ ] Push scoped commits and create accurate draft PR.
+- [x] Push scoped commits and create accurate draft PR.
 
 ## Verified foundation checkpoint
 
@@ -70,5 +70,7 @@ Self-review fixed an optional endpoint later-page 404 being mislabeled unavailab
 Computer-use imported its API but could not connect to its native pipe (system error 2). No Desktop UI actions or refresh proof occurred. A real API credential is still absent. Bounded live_acceptance.py is ready: a recent subset of at most 20 results and at most five completed Load candidates, with one-run export if no compatible pair exists. It does not invent OS identity.
 
 Remaining external evidence: hidden-input enrollment in a normal user terminal; bounded live capture/comparison on 6.9.2; snapshot and live Desktop open/refresh/source reconciliation; subsequent Continuous rolling refresh; independent Claude audit. Native Linux/macOS vault access, Service/gateway, signed distribution, incremental ingestion and InfluxDB/Grafana are not verified capabilities. Licensing remains an owner decision.
+
+The first [hosted run](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/actions/runs/38013349723) passed Python 3.14 on Windows/Linux/macOS and M parsing. Python 3.11 installation exposed missing conditional dependency hashes (backports.tarfile and related older-runtime dependencies). Locks were regenerated with minimum runtime 3.11; local tests/lint/types/audit still pass. CI now also installs the wheel into a fresh runtime-only environment on every platform. The corrected matrix result is pending.
 
 Resume from this file and AGENTS.md. Private state stays ignored; do not copy the original assignment or personal environment details into public content. Safe blog evidence/asset ideas are in ai-workflows.md; neither blog has been published.

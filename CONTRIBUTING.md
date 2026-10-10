@@ -23,6 +23,6 @@ npm.cmd install --prefix .private\powerquery-validation @microsoft/powerquery-pa
 node scripts\validate_m.cjs .private\powerquery-validation
 ```
 
-Update locks deliberately with `uv pip compile pyproject.toml --universal --generate-hashes -o requirements.lock` and the corresponding `--extra dev` command. Review package versions and audit results. Build a wheel with `python -m build --wheel --outdir artifacts/wheels`, then test installation in a fresh environment. No release or package publication is part of preview work.
+Update locks deliberately with `uv pip compile pyproject.toml --universal --python-version 3.11 --generate-hashes -o requirements.lock` and the corresponding `--extra dev` command. Resolve from the minimum runtime so older Python's conditional dependencies are hashed too. Review package versions and audit results. Build a wheel with `python -m build --wheel --outdir artifacts/wheels`, then run `python scripts/installation_smoke.py` with a new ignored environment path. No release or package publication is part of preview work.
 
 Pinned CI actions use read-only repository permissions. Native vault checks and Desktop acceptance are not replaced by hosted offline tests. Record actual findings, fixes and checks in progress.md. License terms remain an owner decision; do not copy public upstream source without established reuse rights.
