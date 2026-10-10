@@ -33,14 +33,15 @@ def demo(directory: Path, scenario: str = "windows-migration") -> None:
                 "configuration_scope": "historical",
                 "testConfigurationSnapshot": {
                     "numberOfSessions": 1,
-                    "workload": "synthetic",
+                    "$type": "LoadTest",
+                    "workloadSteps": [],
                     "testDurationInMinutes": 30,
                 },
-                "euxScore": {"score": None, "state": "insufficientData"},
-                "vsiMax": {"maxSessions": None, "state": "notReached"},
+                "euxScore": {"score": None, "state": "unavailable"},
+                "vsiMax": {"maxSessions": None, "state": "belowSessionCount"},
             }
         ]
-        tables["sessions"] = [{"id": SESSION, "testRunId": run_id, "loginState": "completed"}]
+        tables["sessions"] = [{"id": SESSION, "testRunId": run_id, "loginState": "succeeded"}]
         tables["executions"] = [
             {
                 "id": EXECUTION,

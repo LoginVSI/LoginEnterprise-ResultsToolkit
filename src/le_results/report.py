@@ -2,17 +2,25 @@
 
 import html
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
 from .errors import ToolkitError
-from .evidence import write_json
+from .evidence import TABLES, load_table, verify_capture, write_json
 
 SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/"
 
 
 def m_string(value: str) -> str:
-    return '"' + value.replace('"', '""').replace("\r", "#(cr)").replace("\n", "#(lf)") + '"'
+    return (
+        '"'
+        + value.replace("#", "#(#)")
+        .replace('"', '""')
+        .replace("\r", "#(cr)")
+        .replace("\n", "#(lf)")
+        + '"'
+    )
 
 
 def local_query(path: Path, columns: list[tuple[str, str]]) -> str:
@@ -134,7 +142,7 @@ def build_report(
             table["measures"] = [
                 {
                     "name": "Absolute Change",
-                    "expression": "IF(HASONEVALUE(Comparison[unit]), SELECTEDVALUE(Comparison[absolute_change]))",
+                    "expression": "IF(COUNTROWS(ALLSELECTED(Comparison[unit])) = 1, SELECTEDVALUE(Comparison[absolute_change]))",
                     "formatString": "0.00",
                 },
                 {
@@ -144,16 +152,88 @@ def build_report(
                 },
                 {
                     "name": "Baseline Mean",
-                    "expression": "IF(HASONEVALUE(Comparison[unit]), SELECTEDVALUE(Comparison[baseline_mean]))",
+                    "expression": "IF(COUNTROWS(ALLSELECTED(Comparison[unit])) = 1, SELECTEDVALUE(Comparison[baseline_mean]))",
                     "formatString": "0.00",
                 },
                 {
                     "name": "Candidate Mean",
-                    "expression": "IF(HASONEVALUE(Comparison[unit]), SELECTEDVALUE(Comparison[candidate_mean]))",
+                    "expression": "IF(COUNTROWS(ALLSELECTED(Comparison[unit])) = 1, SELECTEDVALUE(Comparison[candidate_mean]))",
                     "formatString": "0.00",
                 },
             ]
         tables.append(table)
+    source_paths = comparison.get("source_captures", [])
+    source_tables: dict[str, list[dict[str, Any]]] = {name: [] for name in TABLES}
+    for label, source_path in zip(("baseline", "candidate"), source_paths, strict=False):
+        source = Path(source_path)
+        verify_capture(source)
+        shutil.copytree(source, directory / "evidence" / label)
+        for name in TABLES:
+            for raw in load_table(source, name):
+                row = {
+                    k: json.dumps(v, sort_keys=True) if isinstance(v, (dict, list, bool)) else v
+                    for k, v in raw.items()
+                }
+                row["scenario"] = comparison[label]["label"]
+                row["run_key"] = str(raw.get("testRunId", raw.get("id") if name == "runs" else ""))
+                session = (
+                    raw.get("id")
+                    if name == "sessions"
+                    else raw.get("userSessionId", raw.get("userSessionKey"))
+                )
+                row["session_key"] = row["run_key"] + "/" + str(session) if session else None
+                source_tables[name].append(row)
+    for name, rows in source_tables.items():
+        if not source_paths:
+            break
+        fields = sorted({k for row in rows for k in row}) or ["capture_id"]
+        columns = [
+            (field, "double" if any(type(r.get(field)) in (float, int) for r in rows) else "string")
+            for field in fields
+        ]
+        model_name = "Source_" + name
+        write_json(directory / "data" / f"{model_name}.json", rows)
+        query = local_query(directory / "data" / f"{model_name}.json", columns)
+        tables.append(
+            {
+                "name": model_name,
+                "columns": [
+                    {"name": col, "dataType": kind, "sourceColumn": col, "summarizeBy": "none"}
+                    for col, kind in columns
+                ],
+                "partitions": [
+                    {
+                        "name": model_name,
+                        "mode": "import",
+                        "source": {"type": "m", "expression": query.splitlines()},
+                    }
+                ],
+            }
+        )
+    relationships = []
+    for name in ("executions", "measurements", "session_metrics"):
+        if source_tables["sessions"] and source_tables[name]:
+            relationships.append(
+                {
+                    "name": "session_to_" + name,
+                    "fromTable": "Source_" + name,
+                    "fromColumn": "session_key",
+                    "toTable": "Source_sessions",
+                    "toColumn": "session_key",
+                    "crossFilteringBehavior": "oneDirection",
+                }
+            )
+    if source_tables["runs"] and source_tables["sessions"]:
+        relationships.append(
+            {
+                "name": "run_to_session",
+                "fromTable": "Source_sessions",
+                "fromColumn": "run_key",
+                "toTable": "Source_runs",
+                "toColumn": "run_key",
+                "crossFilteringBehavior": "oneDirection",
+            }
+        )
     model = {
         "name": "ResultsToolkit",
         "compatibilityLevel": 1600,
@@ -161,7 +241,7 @@ def build_report(
             "culture": "en-US",
             "defaultPowerBIDataSourceVersion": "powerBI_V3",
             "tables": tables,
-            "relationships": [],
+            "relationships": relationships,
             "annotations": [
                 {"name": "PBI_QueryOrder", "value": '["Comparison","Coverage","Warnings"]'}
             ],
@@ -316,7 +396,7 @@ def build_report(
                 "visual": visual,
             },
         )
-    rows = "".join(
+    html_rows = "".join(
         "<tr>"
         + "".join(
             "<td>" + html.escape(str(r.get(k) if r.get(k) is not None else "unavailable")) + "</td>"
@@ -353,7 +433,7 @@ def build_report(
         + html.escape(comparison["candidate"]["label"])
         + "</p>"
         "<table><tr><th>Metric/group</th><th>Unit</th><th>Baseline mean</th><th>Candidate mean</th><th>Absolute change</th><th>Relative %</th><th>Baseline n</th><th>Candidate n</th></tr>"
-        + rows
+        + html_rows
         + "</table>"
         f'<svg width="700" height="{max(40, len(metrics) * 40)}" aria-label="Relative change percent; bars clipped at 100 percent">'
         + bars

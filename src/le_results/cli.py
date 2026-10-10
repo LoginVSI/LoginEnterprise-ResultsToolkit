@@ -76,6 +76,9 @@ def parser() -> argparse.ArgumentParser:
         "--scenario", choices=["windows-migration", "security-agent"], default="windows-migration"
     )
     synthetic.add_argument("--out", type=Path, required=True)
+    live_report = sub.add_parser("report-live")
+    live_report.add_argument("--config", type=Path, required=True)
+    live_report.add_argument("--out", type=Path, required=True)
     return root
 
 
@@ -201,6 +204,15 @@ def run(args: argparse.Namespace) -> Any:
     if args.command == "demo":
         demo(args.out, args.scenario)
         return {"out": str(args.out), "provenance": "synthetic"}
+    if args.command == "report-live":
+        from .live_report import build_live_report
+
+        build_live_report(json.loads(args.config.read_text(encoding="utf-8")), args.out)
+        return {
+            "out": str(args.out),
+            "acquisition": "Power Query native Key credential",
+            "Desktop_validation": "pending",
+        }
     raise ToolkitError("Unknown command.")
 
 

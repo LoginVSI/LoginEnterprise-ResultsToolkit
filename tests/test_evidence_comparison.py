@@ -262,14 +262,15 @@ def test_application_capture_failure_events_no_eux(tmp_path):
     assert verify_capture(tmp_path)["table_counts"]["eux"] == 0
 
 
-def test_capture_later_page_failure_retains_raw_partial(tmp_path):
+@pytest.mark.parametrize("status", [403, 404])
+def test_capture_later_page_failure_retains_raw_partial(tmp_path, status):
     def respond(req):
         if req.url.path.endswith("measurements"):
             if req.url.params["offset"] == "0":
                 return httpx.Response(
                     200, json={"items": [{"measurementId": "one"}], "offset": 0, "totalCount": 2}
                 )
-            return httpx.Response(403)
+            return httpx.Response(status)
         return mock_capture(req)
 
     with Client(
@@ -284,3 +285,74 @@ def test_capture_later_page_failure_retains_raw_partial(tmp_path):
     assert manifest["status"] == "partial"
     assert any(e["status"] == "partial" and e["count"] == 1 for e in manifest["endpoints"])
     assert any("one" in p.read_text() for p in (tmp_path / "raw").glob("*.json"))
+
+
+def test_optional_endpoint_later_404_is_partial_not_unavailable(tmp_path):
+    def respond(req):
+        if "/user-session-metrics/" in req.url.path:
+            if req.url.params["offset"] == "0":
+                return httpx.Response(
+                    200, json={"items": [{"measurement": 20}], "offset": 0, "totalCount": 2}
+                )
+            return httpx.Response(404)
+        return mock_capture(req)
+
+    with Client(
+        Profile("test", "https://appliance.example.com"),
+        "fake",
+        transport=httpx.MockTransport(respond),
+        page_size=1,
+    ) as client:
+        with pytest.raises(ToolkitError, match="incomplete"):
+            capture(client, Selection("ApplicationTest", [BASE]), tmp_path)
+    endpoint = verify_capture(tmp_path)["endpoints"][-1]
+    assert endpoint["status"] == "partial" and endpoint["count"] == 1
+
+
+def test_cancellation_finalizes_successful_raw_evidence(tmp_path):
+    def respond(req):
+        if req.url.path.endswith("measurements"):
+            raise KeyboardInterrupt
+        return mock_capture(req)
+
+    with Client(
+        Profile("test", "https://appliance.example.com"),
+        "fake",
+        transport=httpx.MockTransport(respond),
+    ) as client:
+        with pytest.raises(KeyboardInterrupt):
+            capture(client, Selection("ApplicationTest", [BASE]), tmp_path)
+    manifest = verify_capture(tmp_path)
+    assert manifest["status"] == "partial" and manifest["error"] == "Cancelled"
+    assert load_table(tmp_path, "executions")[0]["state"] == "endedWithErrors"
+
+
+def test_continuous_fixed_window_and_current_configuration(tmp_path):
+    seen = []
+    start, end = "2026-09-01T10:00:00Z", "2026-09-01T11:00:00Z"
+
+    def respond(req):
+        seen.append(req)
+        if req.url.path.endswith("/tests/" + BASE):
+            return httpx.Response(
+                200, json={"id": BASE, "type": "ContinuousTest", "name": "Synthetic continuous"}
+            )
+        if req.url.path.endswith("eux-results"):
+            return httpx.Response(404)
+        return mock_capture(req)
+
+    with Client(
+        Profile("test", "https://appliance.example.com"),
+        "fake",
+        transport=httpx.MockTransport(respond),
+    ) as client:
+        manifest = capture(client, Selection("ContinuousTest", [BASE], start, end), tmp_path)
+    assert manifest["status"] == "complete"
+    assert load_table(tmp_path, "runs")[0]["configuration_scope"] == "current"
+    result_requests = [
+        r for r in seen if "/test-runs/" in r.url.path or "/user-session-metrics/" in r.url.path
+    ]
+    assert result_requests and all(
+        r.url.params["from"] == start and r.url.params["to"] == end for r in result_requests
+    )
+    assert manifest["endpoints"][-1]["status"] == "unavailable"

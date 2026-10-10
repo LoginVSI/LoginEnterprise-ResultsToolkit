@@ -14,6 +14,7 @@ PAGED = {
     "test-runs/{id}/events",
     "test-runs/{id}/user-sessions/{session}/app-executions",
     "user-session-metrics/{id}",
+    "session-metric-definition-groups/{id}/members",
 }
 SINGLE = {
     "system/version",

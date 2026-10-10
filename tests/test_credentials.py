@@ -77,3 +77,13 @@ def test_no_noninteractive_secret_prompt(monkeypatch):
     monkeypatch.setattr("sys.stdin.isatty", lambda: False)
     with pytest.raises(ToolkitError, match="interactive terminal"):
         hidden_token()
+
+
+def test_profile_list_refuses_unexpected_secret_fields(tmp_path):
+    store = ProfileStore(tmp_path)
+    store.path.write_text(
+        '{"lab": {"origin": "https://host.example", "api_version": "v8-preview", "token": "do-not-echo"}}'
+    )
+    with pytest.raises(ToolkitError) as error:
+        store.read()
+    assert "do-not-echo" not in str(error.value)

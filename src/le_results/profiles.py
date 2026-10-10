@@ -62,7 +62,13 @@ class ProfileStore:
         if not self.path.exists():
             return {}
         try:
-            return json.loads(self.path.read_text(encoding="utf-8"))
+            profiles = json.loads(self.path.read_text(encoding="utf-8"))
+            allowed = {"origin", "api_version", "ca_bundle", "credential_ref"}
+            if not isinstance(profiles, dict) or any(
+                not isinstance(v, dict) or set(v) - allowed for v in profiles.values()
+            ):
+                raise ValueError
+            return profiles
         except (ValueError, OSError):
             raise ToolkitError(
                 "Cannot read profiles.json; repair it before making changes."
@@ -73,7 +79,10 @@ class ProfileStore:
         if values is None:
             raise ToolkitError("Profile missing. Run le-results profile add first.")
         profile = Profile(
-            name, str(values["origin"]), str(values["api_version"]), values.get("ca_bundle")
+            name,
+            canonical_origin(str(values["origin"])),
+            str(values["api_version"]),
+            values.get("ca_bundle"),
         )
         canonical_origin(profile.origin)
         if profile.api_version != "v8-preview":

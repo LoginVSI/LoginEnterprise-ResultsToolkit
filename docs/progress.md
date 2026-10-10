@@ -8,17 +8,18 @@ Work is on `feat/results-toolkit-foundation`. The starting checkout had one init
 
 | Slice | Implemented | Offline proof | Appliance proof | Desktop proof |
 |---|---|---|---|---|
-| Installable Python engine, CLI, native PowerShell wrapper | Yes | Installation and walkthrough exercised; regression pass pending fixes | N/A | N/A |
-| Nonsecret profiles and native vault enrollment/status/replacement/deletion | Yes | Native Windows backend lookup confirmed, no credential enrolled; abstraction tests in progress | No token | N/A |
+| Installable Python engine, CLI, native PowerShell wrapper | Yes | Fresh wheel and outside-source walkthrough; PowerShell 5.1/7 exercised | N/A | N/A |
+| Nonsecret profiles and native vault enrollment/status/replacement/deletion | Yes | Native Windows lookup and disposable nonsecret write/read/delete; abstraction tests pass | No token | N/A |
 | Read-only HTTPS transport, bounded retry/paging and safe errors | Yes | Negative and paging tests implemented | Pending credential | N/A |
-| Explicit Load/Application/Continuous selection and capture | Yes | Application/failure and partial-page fixtures in progress | Pending credential | N/A |
+| Explicit Load/Application/Continuous selection and capture | Yes | Application failure, Continuous fixed window/current configuration and partial-page fixtures pass | Pending credential | N/A |
 | Raw JSON, normalized JSON/CSV, dictionary and hashed manifest | Yes | Synthetic capture and verification exercised | Pending credential | N/A |
 | Explicit metric comparison and failure/coverage evidence | Yes | Synthetic means 120/130, delta 10, relative 8.3333%; candidate failure retained | Pending compatible Load pair | N/A |
-| Portable HTML and editable local-file PBIP/PBIR/model.bim report | Yes | Generated; official schema validation in progress | N/A | Pending |
-| Refreshable acquisition and generated live model | In progress | Pending M runtime | Pending | Pending |
-| Portable AI skills and customer documentation | In progress | Pending walkthrough review | N/A | N/A |
+| Portable HTML and editable local-file PBIP/PBIR/model.bim report | Yes | Source evidence copied; relationships/numeric fields and official schemas checked | N/A | Pending open/refresh |
+| Refreshable acquisition and generated live model | Yes | M syntax, schemas and generated references checked; M execution pending | Pending | Pending subsequent refresh |
+| Portable AI skills and customer documentation | Yes | Three canonical skills validate; six thin host adapters; no-AI walkthrough | N/A | N/A |
+| Hosted Windows/Linux/macOS core CI | Configured | Six OS/Python combinations and M parser; results pending push | N/A | N/A |
 | InfluxDB/Grafana | Planned | No implementation | No | N/A |
-| Independent Claude Code audit | Handoff planned | Not run | N/A | N/A |
+| Independent Claude Code audit | Ready prompt in claude-audit.md | Not run | N/A | N/A |
 
 ## Decisions and contract evidence
 
@@ -39,10 +40,11 @@ Work is on `feat/results-toolkit-foundation`. The starting checkout had one init
 - [x] Implement secure enrollment and create local validation profile without a token.
 - [x] Implement bounded discovery, explicit selections, raw/normalized export and comparison.
 - [x] Exercise a no-appliance synthetic migration export/comparison/report.
-- [ ] Finish regression/type/lint checks, native vault roundtrip and scoped checkpoint commit.
-- [ ] Complete refreshable M connector and report generation with explicit credential storage.
-- [ ] Validate report schemas/references and fresh wheel installation.
-- [ ] Finish portable workflows, CI, customer docs, live/Desktop procedures and independent audit handoff.
+- [x] Finish regression/type/lint checks, native vault roundtrip and scoped foundation checkpoint de5fa0f.
+- [x] Complete refreshable M connector and report generation with explicit credential storage.
+- [x] Validate report schemas/references and fresh wheel installation.
+- [x] Finish portable workflows, CI, customer docs, live/Desktop procedures and independent audit handoff.
+- [ ] Record hosted CI results and native Linux/macOS credential proof separately.
 - [ ] Run bounded live discovery/export with saved credential; use a compatible Load pair when available.
 - [ ] Open/refresh snapshot and live report in target Desktop and reconcile numeric source checks.
 - [ ] Push scoped commits and create accurate draft PR.
@@ -51,8 +53,22 @@ Work is on `feat/results-toolkit-foundation`. The starting checkout had one init
 
 On 2026-10-09, native Windows Python 3.14.8 passed 46 unit/functional/negative tests, Ruff and mypy (12 source modules). Editable installation and the synthetic export/comparison/report walkthrough succeeded. Eleven PBIP/PBIR JSON files passed Microsoft's official schemas, including nested visual expressions. Installed Desktop version was read as 2.158.1304.0, matching the target; no Desktop open/refresh acceptance has occurred. GitHub CLI authentication is available.
 
-The local 901-page September 2026 guide was consulted at pages 259 (retention), 449 (API), 524 (single-user Desktop Load and figure), 573/588 (session metrics), and 859 (SetTimer). The guide's full prior ChatGPT review remains completed. Local consultation adds design evidence, not live proof. Figure inspection is pending a local renderer.
+The local 901-page September 2026 guide was consulted at pages 259 (retention), 449 (API), 524 (single-user Desktop Load and figure), 573/588 (session metrics), and 859 (SetTimer). Page 524 was rendered and visually inspected: one user, no login process, optional EUX/session metrics and no meaningful capacity comparison. The guide's full prior ChatGPT review remains completed. Local consultation adds design evidence, not live proof.
 
 The two initial test issues were in fixture dispatch and test-double class cleanup; corrected regressions now pass. No production failure was hidden by rewriting expected values.
 
-Resume from this file and AGENTS.md. Private state stays ignored; do not copy the original assignment or personal environment details into public content.
+## Reporting and workflow checkpoint
+
+Native Windows Python 3.14.8 now passes 57 unit/functional/negative tests, Ruff and mypy across 13 engine modules. A fresh isolated environment installed the wheel with hash-locked runtime dependencies, then ran demo, compare and report outside src. Windows PowerShell 5.1 and 7.6.6 wrappers both verified capture hashes. The three canonical skills passed skill-creator validation.
+
+The final snapshot, Load live and Continuous live projects each passed 11 official Microsoft PBIP/PBIR schema checks. Microsoft's M parser 2.0.0 validates connector and generated query syntax. These checks do not evaluate Mashup or DAX in Desktop. The unsigned development connector was packaged without upstream assets. Power Query Key enrollment is separate from the Python vault.
+
+Current collector definitions retain source fields/settings where exposed and remain labeled current. Snapshot bundles copy verified raw/normalized evidence. Numeric visual measures use selection-wide unit guards. Synthetic arithmetic remains independently reconciled at means 120/130, delta 10, relative 8.3333%, three observations per side and one candidate execution failure. No benchmark claim is made.
+
+Self-review fixed an optional endpoint later-page 404 being mislabeled unavailable. Its regression requires partial evidence and failure. Cancellation finalizes evidence before exit. Synthetic login/EUX/VSImax states were corrected against the API enums. These are implementation-agent findings, not an independent Claude audit.
+
+Computer-use imported its API but could not connect to its native pipe (system error 2). No Desktop UI actions or refresh proof occurred. A real API credential is still absent. Bounded live_acceptance.py is ready: a recent subset of at most 20 results and at most five completed Load candidates, with one-run export if no compatible pair exists. It does not invent OS identity.
+
+Remaining external evidence: hidden-input enrollment in a normal user terminal; bounded live capture/comparison on 6.9.2; snapshot and live Desktop open/refresh/source reconciliation; subsequent Continuous rolling refresh; independent Claude audit. Native Linux/macOS vault access, Service/gateway, signed distribution, incremental ingestion and InfluxDB/Grafana are not verified capabilities. Licensing remains an owner decision.
+
+Resume from this file and AGENTS.md. Private state stays ignored; do not copy the original assignment or personal environment details into public content. Safe blog evidence/asset ideas are in ai-workflows.md; neither blog has been published.

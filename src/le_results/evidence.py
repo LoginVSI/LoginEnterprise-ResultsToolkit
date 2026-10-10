@@ -12,7 +12,17 @@ from .contracts import route
 from .errors import ToolkitError
 from .selection import Selection, utc
 
-TABLES = ("runs", "sessions", "executions", "events", "measurements", "session_metrics", "eux")
+TABLES = (
+    "runs",
+    "sessions",
+    "executions",
+    "events",
+    "measurements",
+    "session_metrics",
+    "eux",
+    "current_configuration",
+    "collectors",
+)
 
 
 def write_json(path: Path, data: Any) -> None:
@@ -81,6 +91,8 @@ def finalize(
                 "measurements": "One timer observation; measurementId is not an observation ID; duration unit unspecified by API",
                 "session_metrics": "One timestamp/session/field/instance observation; source unit retained; host scope uncertain",
                 "eux": "One vendor score interval; no toolkit EUX calculation",
+                "current_configuration": "One current test configuration, never evidence of historical settings",
+                "collectors": "One current collector definition; source query/counter, instance and poll settings retained where exposed",
             },
             "timestamps": "Original fields retained; *_utc contains timezone-aware UTC conversion",
             "nested_fields": "JSON objects/arrays preserved in JSON and serialized in CSV",
@@ -150,6 +162,8 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
         def save(page: int, data: dict[str, Any]) -> None:
             write_json(directory / "raw" / f"{prefix}-{page:04d}.json", data)
             outcome["count"] += len(data["items"])
+            outcome["last_page"] = page
+            outcome["last_offset"] = data["offset"]
 
         try:
             if paged:
@@ -167,7 +181,7 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
             return data
         except ToolkitError as exc:
             outcome["error"] = str(exc)
-            if optional and exc.status in (404, 405):
+            if optional and exc.status in (404, 405) and outcome["count"] == 0:
                 outcome["status"] = "unavailable"
                 manifest["warnings"].append("Optional endpoint unavailable: " + path)
                 return None
@@ -204,6 +218,34 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                     else "unavailable"
                 )
                 result_id = selected
+            if selection.test_type == "ContinuousTest":
+                current = run
+            elif run.get("testId"):
+                current = acquire(
+                    route("tests/{id}", id=run["testId"]),
+                    "current_configuration",
+                    params={"include": "all"},
+                    optional=True,
+                )
+                if current:
+                    tables["current_configuration"][-1]["configuration_scope"] = "current"
+            else:
+                current = None
+            if current and current.get("sessionMetricGroupKey"):
+                acquire(
+                    route(
+                        "session-metric-definition-groups/{id}/members",
+                        id=current["sessionMetricGroupKey"],
+                    ),
+                    "collectors",
+                    True,
+                    optional=True,
+                )
+                for collector in tables["collectors"]:
+                    collector["configuration_scope"] = "current"
+            manifest["warnings"].append(
+                "Current collector definitions do not establish historical collector settings."
+            )
             window = {"from": selection.start, "to": selection.end} if selection.start else {}
             sessions = acquire(
                 route("test-runs/{id}/user-sessions", id=result_id), "sessions", True, window
@@ -241,14 +283,22 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                     optional=True,
                 )
         manifest["status"] = "complete"
-    except (ToolkitError, KeyboardInterrupt) as exc:
+    except (ToolkitError, KeyboardInterrupt, KeyError, TypeError, ValueError) as exc:
         manifest["status"] = (
             "partial"
             if any(e["status"] in ("complete", "empty", "partial") for e in manifest["endpoints"])
             else "failed"
         )
-        manifest["error"] = str(exc) if isinstance(exc, ToolkitError) else "Cancelled"
+        manifest["error"] = (
+            str(exc)
+            if isinstance(exc, ToolkitError)
+            else "Cancelled"
+            if isinstance(exc, KeyboardInterrupt)
+            else "Malformed source response"
+        )
         finalize(directory, manifest, tables)
+        if isinstance(exc, KeyboardInterrupt):
+            raise
         raise ToolkitError(
             "Capture incomplete. Inspect manifest endpoint outcomes; recapture to a new directory."
         ) from None

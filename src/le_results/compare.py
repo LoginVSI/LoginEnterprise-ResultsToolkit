@@ -179,4 +179,5 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
         "coverage": coverage,
         "warnings": sorted(set(warnings)),
         "source_manifests": [bm, cm],
+        "source_captures": [str(baseline.resolve()), str(candidate.resolve())],
     }

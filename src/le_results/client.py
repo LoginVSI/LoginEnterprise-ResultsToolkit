@@ -138,8 +138,8 @@ class Client:
                         "authorization",
                         "password",
                         "secret",
-                        "accesstoken",
-                        "apitoken",
+                        "token",
+                        "apikey",
                         "cookie",
                     )
                 )
@@ -152,7 +152,12 @@ class Client:
             import re
 
             value = value.replace(self._token, "[REDACTED]")
-            return re.sub(r"(?i)bearer\s+[^\s\"'<>]+", "Bearer [REDACTED]", value)
+            value = re.sub(r"(?i)bearer\s+[^\s\"'<>]+", "Bearer [REDACTED]", value)
+            return re.sub(
+                r"(?i)(token|api_?key|password|secret|authorization)=([^&\s]+)",
+                r"\1=[REDACTED]",
+                value,
+            )
         return value
 
     def pages(
