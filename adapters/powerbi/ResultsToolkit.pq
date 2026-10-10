@@ -120,7 +120,7 @@ Fetch = (origin as text, kind as text, scenario as text, runId as text, window a
     let id = Id(runId), prefix = "test-runs/" & id & "/",
         run = if kind="ContinuousTest" then Get(origin,"tests/" & id,[include="all"],0)
               else Get(origin,"test-runs/" & id,[include="testRunConfigurationSnapshot"],0),
-        checkedRun = if Record.FieldOrDefault(run,"type",null) <> kind then error Error.Record("Selection","Returned type differs from selection.",null)
+        checkedRun = if Record.FieldOrDefault(run,"type",null) <> kind or Record.FieldOrDefault(run,"id",null) <> id then error Error.Record("Selection","Returned identity/type differs from selection.",null)
                      else if kind <> "ContinuousTest" and Record.FieldOrDefault(run,"finished",null)=null then error Error.Record("Selection","Select completed runs.",null) else run,
         sessions = Page(origin,prefix & "user-sessions",window,0,null,0),
         executions = List.Combine(List.Transform(sessions, (s) => Page(origin,prefix & "user-sessions/" & Id(s[id]) & "/app-executions",window,0,null,0))),

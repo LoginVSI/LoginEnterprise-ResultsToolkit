@@ -92,7 +92,7 @@ def finalize(
                 "session_metrics": "One timestamp/session/field/instance observation; source unit retained; host scope uncertain",
                 "eux": "One vendor score interval; no toolkit EUX calculation",
                 "current_configuration": "One current test configuration, never evidence of historical settings",
-                "collectors": "One current collector definition; source query/counter, instance and poll settings retained where exposed",
+                "collectors": "One current definition/group/selected-result association; source query/counter, instance and poll settings retained where exposed",
             },
             "timestamps": "Original fields retained; *_utc contains timezone-aware UTC conversion",
             "nested_fields": "JSON objects/arrays preserved in JSON and serialized in CSV",
@@ -194,8 +194,10 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
         for selected in selection.ids:
             if selection.test_type == "ContinuousTest":
                 run = acquire(route("tests/{id}", id=selected), "runs", params={"include": "all"})
-                if run.get("type") != "ContinuousTest":
-                    raise ToolkitError("Selected test is not ContinuousTest.")
+                if run.get("id") != selected or run.get("type") != "ContinuousTest":
+                    raise ToolkitError(
+                        "Returned Continuous test identity/type differs from selection."
+                    )
                 tables["runs"][-1]["configuration_scope"] = "current"
                 result_id = (
                     selected  # Contract calls this testRunId; Continuous uses test identity.
@@ -229,9 +231,11 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                 )
                 if current:
                     tables["current_configuration"][-1]["configuration_scope"] = "current"
+                    tables["current_configuration"][-1]["_selected_result_id"] = selected
             else:
                 current = None
             if current and current.get("sessionMetricGroupKey"):
+                first_collector = len(tables["collectors"])
                 acquire(
                     route(
                         "session-metric-definition-groups/{id}/members",
@@ -241,8 +245,10 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                     True,
                     optional=True,
                 )
-                for collector in tables["collectors"]:
+                for collector in tables["collectors"][first_collector:]:
                     collector["configuration_scope"] = "current"
+                    collector["_selected_result_id"] = selected
+                    collector["_collector_group_id"] = current["sessionMetricGroupKey"]
             manifest["warnings"].append(
                 "Current collector definitions do not establish historical collector settings."
             )

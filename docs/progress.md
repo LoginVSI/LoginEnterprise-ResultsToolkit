@@ -59,7 +59,7 @@ The two initial test issues were in fixture dispatch and test-double class clean
 
 ## Reporting and workflow checkpoint
 
-Native Windows Python 3.14.8 now passes 57 unit/functional/negative tests, Ruff and mypy across 13 engine modules. A fresh isolated environment installed the wheel with hash-locked runtime dependencies, then ran demo, compare and report outside src. Windows PowerShell 5.1 and 7.6.6 wrappers both verified capture hashes. The three canonical skills passed skill-creator validation.
+Native Windows Python 3.14.8 now passes 59 unit/functional/negative tests, Ruff and mypy across 13 engine modules. A fresh isolated environment installed the wheel with hash-locked runtime dependencies, then ran demo, compare and report outside src. Windows PowerShell 5.1 and 7.6.6 wrappers both verified capture hashes. The three canonical skills passed skill-creator validation.
 
 The final snapshot, Load live and Continuous live projects each passed 11 official Microsoft PBIP/PBIR schema checks. Microsoft's M parser 2.0.0 validates connector and generated query syntax. These checks do not evaluate Mashup or DAX in Desktop. The unsigned development connector was packaged without upstream assets. Power Query Key enrollment is separate from the Python vault.
 
@@ -71,6 +71,8 @@ Computer-use imported its API but could not connect to its native pipe (system e
 
 Remaining external evidence: hidden-input enrollment in a normal user terminal; bounded live capture/comparison on 6.9.2; snapshot and live Desktop open/refresh/source reconciliation; subsequent Continuous rolling refresh; independent Claude audit. Native Linux/macOS vault access, Service/gateway, signed distribution, incremental ingestion and InfluxDB/Grafana are not verified capabilities. Licensing remains an owner decision.
 
-The first [hosted run](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/actions/runs/38013349723) passed Python 3.14 on Windows/Linux/macOS and M parsing. Python 3.11 installation exposed missing conditional dependency hashes (backports.tarfile and related older-runtime dependencies). Locks were regenerated with minimum runtime 3.11; local tests/lint/types/audit still pass. CI now also installs the wheel into a fresh runtime-only environment on every platform. The corrected matrix result is pending.
+The first [hosted run](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/actions/runs/38013349723) passed Python 3.14 on Windows/Linux/macOS and M parsing. Python 3.11 installation exposed missing conditional dependency hashes (backports.tarfile and related older-runtime dependencies). Locks were regenerated with minimum runtime 3.11. The [second run](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/actions/runs/38013682767) passed tests/lint/types on Python 3.11 across all three platforms, then caught vulnerable setuptools seeded by the runners. Development locks now replace that tooling with a current audited version rather than suppressing findings. CI also installs the wheel into a fresh runtime-only environment on every platform. Final matrix results are pending.
+
+Two additional identity regressions require a selected Continuous response ID to match and retain collector-to-group/result associations across multiple selected runs. Current definitions remain current even when the corresponding run has historical configuration.
 
 Resume from this file and AGENTS.md. Private state stays ignored; do not copy the original assignment or personal environment details into public content. Safe blog evidence/asset ideas are in ai-workflows.md; neither blog has been published.

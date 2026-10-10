@@ -12,7 +12,7 @@ Capture contract `capture/1` links selection, source origin/API version, capture
 | session_metrics | Timestamp, session key, field, instance and unit | Source measurement and labels retained; CPU/memory may describe a shared host |
 | eux | Source vendor score interval | Score zero is numeric; disabled/unavailable/insufficient representativeness is separate; no toolkit score calculation |
 | current_configuration | Current test configuration when available | Never relabeled historical; may contain workload, engine/debug, collector and sampling settings |
-| collectors | Current definition records from the configured group | Retain source counter/WMI query, instance rules, summarization and unit/settings where exposed; historical snapshots may expose only ID/name/unit |
+| collectors | Current definition/group/selected-result association | _collector_group_id and _selected_result_id preserve acquisition links; retain source counter/WMI query, instance rules, summarization and unit/settings where exposed; historical snapshots may expose only ID/name/unit |
 
 Original timestamps remain in their original fields. `*_utc` stores timezone-aware UTC conversion; a missing timezone or parse failure produces a warning and null conversion. Nested JSON is retained in JSON tables and serialized in CSV cells. The generated data dictionary travels with the capture.
 

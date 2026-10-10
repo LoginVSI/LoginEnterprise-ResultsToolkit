@@ -356,3 +356,72 @@ def test_continuous_fixed_window_and_current_configuration(tmp_path):
         r.url.params["from"] == start and r.url.params["to"] == end for r in result_requests
     )
     assert manifest["endpoints"][-1]["status"] == "unavailable"
+
+
+def test_continuous_wrong_identity_fails(tmp_path):
+    def respond(req):
+        if req.url.path.endswith("/tests/" + BASE):
+            return httpx.Response(200, json={"id": CANDIDATE, "type": "ContinuousTest"})
+        return mock_capture(req)
+
+    with Client(
+        Profile("test", "https://appliance.example.com"),
+        "fake",
+        transport=httpx.MockTransport(respond),
+    ) as client:
+        with pytest.raises(ToolkitError, match="incomplete"):
+            capture(
+                client,
+                Selection("ContinuousTest", [BASE], "2026-09-01T10:00:00Z", "2026-09-01T11:00:00Z"),
+                tmp_path,
+            )
+    assert "identity/type" in verify_capture(tmp_path)["error"]
+
+
+def test_current_collector_associations_survive_multiple_runs(tmp_path):
+    def respond(req):
+        path = req.url.path
+        if path.endswith("/test-runs/" + BASE) or path.endswith("/test-runs/" + CANDIDATE):
+            return httpx.Response(
+                200,
+                json={
+                    "id": path.rsplit("/", 1)[-1],
+                    "testId": APP,
+                    "type": "ApplicationTest",
+                    "finished": "2026-09-01T11:00:00Z",
+                    "testConfigurationSnapshot": {"sessionMetricDefinitions": []},
+                },
+            )
+        if path.endswith("/tests/" + APP):
+            return httpx.Response(
+                200, json={"id": APP, "type": "ApplicationTest", "sessionMetricGroupKey": EXECUTION}
+            )
+        if path.endswith("/members"):
+            return httpx.Response(
+                200,
+                json={
+                    "items": [
+                        {"id": SESSION, "counter": "synthetic CPU", "unit": "%", "pollInterval": 2}
+                    ],
+                    "offset": 0,
+                    "totalCount": 1,
+                },
+            )
+        if path.endswith("system/version") or path.endswith("system/eux-version"):
+            return mock_capture(req)
+        return httpx.Response(200, json={"items": [], "offset": 0, "totalCount": 0})
+
+    with Client(
+        Profile("test", "https://appliance.example.com"),
+        "fake",
+        transport=httpx.MockTransport(respond),
+    ) as client:
+        capture(client, Selection("ApplicationTest", [BASE, CANDIDATE]), tmp_path)
+    collectors = load_table(tmp_path, "collectors")
+    assert len(collectors) == 2
+    assert {r["_selected_result_id"] for r in collectors} == {BASE, CANDIDATE}
+    assert all(
+        r["_collector_group_id"] == EXECUTION and r["configuration_scope"] == "current"
+        for r in collectors
+    )
+    assert all(r["configuration_scope"] == "historical" for r in load_table(tmp_path, "runs"))
