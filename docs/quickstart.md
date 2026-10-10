@@ -14,7 +14,7 @@ py -3 -m venv .venv
 .\.venv\Scripts\le-results.exe verify artifacts\migration\baseline
 ```
 
-On Linux/macOS, create `.venv` with `python3 -m venv .venv`, then use `.venv/bin/python` and `.venv/bin/le-results` for the same commands. This is a supported design target; native credential persistence requires a separately verified provider on each platform. An optional uv installation can use `uv pip install --require-hashes -r requirements.lock` followed by `uv pip install --no-deps -e .`; pip remains the straightforward fallback.
+On Linux/macOS, create `.venv` with `python3 -m venv .venv`, then use `.venv/bin/python` and `.venv/bin/le-results` for the same commands. Hosted core checks and fresh wheel walkthroughs pass on Windows/Linux/macOS with Python 3.11 and 3.14; native credential persistence requires a separately verified provider on each platform. An optional uv installation can use `uv pip install --require-hashes -r requirements.lock` followed by `uv pip install --no-deps -e .`; pip remains the straightforward fallback.
 
 Open `artifacts/migration/report/report.html` in a browser. The baseline values are 100, 120 and 140; the candidate values are 110, 130 and 150. The means are 120 and 130, with absolute change 10 and relative change 8.3333%. One candidate execution failed. These are synthetic values, not measurements of either Windows version.
 

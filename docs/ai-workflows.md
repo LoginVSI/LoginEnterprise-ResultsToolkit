@@ -11,7 +11,7 @@ Install thin project-local entry points:
 .\.venv\Scripts\python.exe scripts\install_skills.py --host claude
 ```
 
-The adapters point to the canonical workflow within the checkout. They do not copy personal configuration or private skills. Codex uses `.agents/skills`; Claude Code uses `.claude/skills`. Consult host-specific skill discovery settings if your host uses a different project scope. No MCP server is added because the CLI already serves these workflows.
+The adapters point to the canonical workflow within the checkout. They do not copy personal configuration or private skills. Codex uses `.agents/skills`, as described in [official OpenAI documentation](https://learn.chatgpt.com/docs/build-skills). Claude Code uses `.claude/skills`, as described in its [official skill documentation](https://code.claude.com/docs/en/skills). Both project locations were checked on 2026-10-09. Host policies may restrict discovery; restart or inspect the host's skill list if an adapter does not appear. No MCP server is added because the CLI already serves these workflows.
 
 Example requests:
 

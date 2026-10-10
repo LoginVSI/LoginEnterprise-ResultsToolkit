@@ -17,13 +17,13 @@ Work is on `feat/results-toolkit-foundation`. Foundation checkpoint `de5fa0f` an
 | Portable HTML and editable local-file PBIP/PBIR/model.bim report | Yes | Source evidence copied; relationships/numeric fields and official schemas checked | N/A | Pending open/refresh |
 | Refreshable acquisition and generated live model | Yes | M syntax, schemas and generated references checked; M execution pending | Pending | Pending subsequent refresh |
 | Portable AI skills and customer documentation | Yes | Three canonical skills validate; six thin host adapters; no-AI walkthrough | N/A | N/A |
-| Hosted Windows/Linux/macOS core CI | Configured | Six OS/Python combinations and M parser; results pending push | N/A | N/A |
+| Hosted Windows/Linux/macOS core CI | Yes | Six OS/Python combinations and M parser pass, including fresh wheel walkthroughs | N/A | N/A |
 | InfluxDB/Grafana | Planned | No implementation | No | N/A |
 | Independent Claude Code audit | Ready prompt in claude-audit.md | Not run | N/A | N/A |
 
 ## Decisions and contract evidence
 
-- Python 3.11+ with httpx, keyring and platformdirs. The standard-library CLI avoids an extra command framework. Native Windows Python keeps vault lookup under the enrolled user's account. Linux/macOS compatibility is a target until platform checks run.
+- Python 3.11+ with httpx, keyring and platformdirs. The standard-library CLI avoids an extra command framework. Native Windows Python keeps vault lookup under the enrolled user's account. Windows/Linux/macOS core checks pass on Python 3.11 and 3.14; native Linux/macOS vault access remains unverified.
 - API routing is explicitly `/publicApi/v8-preview`. `info.version` was verified as `8.0-preview` and `7.0`; v7 is reference only. Full sanitized snapshots and original/sanitized hashes are in `docs/api`. Examples/contact metadata were removed, and absolute URLs replaced throughout. Private originals were not modified.
 - Discovery is bounded to a recent subset, then selection records explicit UUIDs. Continuous selects test identity plus a frozen window. Result paths may name this `testRunId`; this mapping still needs live proof.
 - Raw timer `duration` has no declared unit in the supplied API schema. Comparison configuration must declare unit, semantics and direction. SetTimer is not assumed to be a duration.
@@ -44,7 +44,8 @@ Work is on `feat/results-toolkit-foundation`. Foundation checkpoint `de5fa0f` an
 - [x] Complete refreshable M connector and report generation with explicit credential storage.
 - [x] Validate report schemas/references and fresh wheel installation.
 - [x] Finish portable workflows, CI, customer docs, live/Desktop procedures and independent audit handoff.
-- [ ] Record hosted CI results and native Linux/macOS credential proof separately.
+- [x] Record hosted core CI results separately from native credential proof.
+- [ ] Verify native Linux/macOS credential access on suitable hosts.
 - [ ] Run bounded live discovery/export with saved credential; use a compatible Load pair when available.
 - [ ] Open/refresh snapshot and live report in target Desktop and reconcile numeric source checks.
 - [x] Push scoped commits and create accurate draft PR.
@@ -74,5 +75,7 @@ Remaining external evidence: hidden-input enrollment in a normal user terminal; 
 The first [hosted run](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/actions/runs/38013349723) passed Python 3.14 on Windows/Linux/macOS and M parsing. Python 3.11 installation exposed missing conditional dependency hashes (backports.tarfile and related older-runtime dependencies). Locks were regenerated with minimum runtime 3.11. The [second run](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/actions/runs/38013682767) passed tests/lint/types on Python 3.11 across all three platforms, then caught vulnerable setuptools seeded by the runners. Development locks now replace that tooling with a current audited version rather than suppressing findings. CI also installs the wheel into a fresh runtime-only environment on every platform. Final matrix results are pending.
 
 Two additional identity regressions require a selected Continuous response ID to match and retain collector-to-group/result associations across multiple selected runs. Current definitions remain current even when the corresponding run has historical configuration.
+
+The final code checkpoint `1946dee` passes the complete [push matrix](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/actions/runs/38014505385) and [PR matrix](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/actions/runs/38014509193): 59 tests, lint/types, public-content checks, dependency audit, wheel build, fresh runtime-only wheel installation and offline demo/compare/report on Windows/Linux/macOS with Python 3.11 and 3.14. Both Windows PowerShell wrappers pass in hosted Windows jobs. The separate M parser job passes. No findings were suppressed to obtain these results. These runs establish core portability, not native Linux/macOS vault or Desktop acceptance.
 
 Resume from this file and AGENTS.md. Private state stays ignored; do not copy the original assignment or personal environment details into public content. Safe blog evidence/asset ideas are in ai-workflows.md; neither blog has been published.
