@@ -69,10 +69,17 @@ def server(
     expired=False,
     purpose=ExtendedKeyUsageOID.SERVER_AUTH,
     ca_key_usage=True,
+    self_issued=False,
+    include_ca=True,
 ):
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    ca = certificate(ca_key, "Synthetic root", ca=True, key_usage=ca_key_usage)
+    ca = certificate(
+        ca_key,
+        "Synthetic leaf" if self_issued else "Synthetic root",
+        ca=True,
+        key_usage=ca_key_usage,
+    )
     leaf = certificate(
         key,
         "Synthetic leaf",
@@ -84,7 +91,10 @@ def server(
     )
     pem = leaf.public_bytes(serialization.Encoding.PEM)
     chain = tmp_path / "server.pem"
-    chain.write_bytes(pem + (b"" if self_signed else ca.public_bytes(serialization.Encoding.PEM)))
+    chain.write_bytes(
+        pem
+        + (b"" if self_signed or not include_ca else ca.public_bytes(serialization.Encoding.PEM))
+    )
     keyfile = tmp_path / "server.key"
     keyfile.write_bytes(
         key.private_bytes(
@@ -183,6 +193,33 @@ def test_strict_missing_ca_key_usage_rejection(tmp_path):
         assert requests == []
 
 
+def test_approved_self_issued_leaf_trust_keeps_runtime_flags(tmp_path):
+    with server(tmp_path, self_issued=True, ca_key_usage=False, include_ca=False) as (
+        profile,
+        requests,
+        leaf,
+    ):
+        assert leaf.subject == leaf.issuer
+        from cryptography.exceptions import InvalidSignature
+
+        with pytest.raises(InvalidSignature):
+            leaf.verify_directly_issued_by(leaf)
+        # This is explicitly approved synthetic material, never a network-fetched enrollment.
+        trust = tmp_path / "trust.pem"
+        trust.write_bytes(leaf.public_bytes(serialization.Encoding.PEM))
+        default_flags = context(str(trust)).verify_flags
+        with Client(profile, "synthetic-secret", retries=0) as client:
+            if default_flags & ssl.VERIFY_X509_PARTIAL_CHAIN:
+                assert client.get("system/version")["currentVersion"] == "synthetic"
+                assert requests == ["/publicApi/v8-preview/system/version"]
+            else:
+                with pytest.raises(ToolkitError) as failure:
+                    client.get("system/version")
+                assert failure.value.verify_code is not None
+                assert requests == []
+        assert context(str(trust)).verify_flags == default_flags
+
+
 def test_unknown_exception_text_not_exposed_and_cycles_bounded():
     error = RuntimeError("Bearer synthetic-secret https://proxy-user:proxy-password@example.com")
     error.__cause__ = error
@@ -230,7 +267,9 @@ def test_trust_exact_fingerprints_and_offline_doctor_no_tls_claim(tmp_path, monk
     assert result["output_writable"] is True
 
 
-@pytest.mark.parametrize("contents", [b"not PEM", b"-----BEGIN " + b"PRIVATE KEY-----\nfake\n", b""])
+@pytest.mark.parametrize(
+    "contents", [b"not PEM", b"-----BEGIN " + b"PRIVATE KEY-----\nfake\n", b""]
+)
 def test_malformed_trust_does_not_change_profile(tmp_path, contents):
     store = ProfileStore(tmp_path / "config")
     store.add(Profile("test", "https://appliance.example.com"))
