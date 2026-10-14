@@ -2,6 +2,8 @@
 
 This is a handoff, not an audit result. No independent Claude Code audit has run. The implementation agent's checks are not independent evidence.
 
+The 2026-10-13 attempt used inspected CLI flags, restricted read tools, an isolated public-only snapshot and exact offline-check permissions. It failed before inference because saved OAuth access had expired and could not refresh. No independent findings exist. Renew access interactively with `claude auth login`, then use the prepared local runner. Authentication-status metadata alone did not prove usable access. Keep private inputs excluded on rerun; never grant blanket shell access or bypass permission checks.
+
 Use this prompt from the checkout in a separate Claude Code session:
 
 ```text

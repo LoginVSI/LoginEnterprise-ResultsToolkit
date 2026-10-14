@@ -5,7 +5,7 @@ Use Python 3.11 or newer. Native Windows Python 3.14.8 is the locally exercised 
 In a fresh checkout of the preview branch, use PowerShell:
 
 ```powershell
-py -3 -m venv .venv
+py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements.lock
 .\.venv\Scripts\python.exe -m pip install --no-deps -e .
 .\.venv\Scripts\le-results.exe demo --out artifacts\migration
@@ -28,6 +28,10 @@ For a security-agent example, use a different destination:
 
 ## Add an appliance
 
+Before importing the engine, Windows users can run `scripts/Test-LEResultsReadiness.ps1`. It checks that the selected executable starts, reports runtime/architecture and explains missing dependencies. Add `-Profile lab` for offline engine readiness, `-OutputDirectory .private\readiness` for a write check, and `-Live` for verified TLS/API diagnosis. Use `-Python PATH` when the environment is elsewhere. Missing or broken Python exits 2 with a safe bootstrap diagnostic.
+
+Choose an explicit installed runtime when creating the environment. A runtime upgrade can leave `pyvenv.cfg` pointing at a removed executable. Preserve that environment under ignored storage, create a new `.venv` with Python 3.11 or 3.14, then reinstall the locks and toolkit. Preserve profiles and native vault enrollment outside `.venv`. Activation is optional. Use a user-local runtime and a checkout under your own writable directory; no machine PATH or global security changes are needed.
+
 ```powershell
 .\.venv\Scripts\le-results.exe profile add lab --url https://appliance.example.com --api-version v8-preview
 .\.venv\Scripts\le-results.exe auth set --profile lab
@@ -40,6 +44,34 @@ Replace the example origin with your appliance origin. It must be HTTPS without 
 `auth set` requires hidden input in a normal terminal. Never put the token in chat, a command argument, a source file or a Power BI parameter. Use `auth set --replace --profile lab` to replace it, or `auth delete --profile lab` to delete it. `profile add --replace` changes nonsecret configuration without carrying a credential to a different origin.
 
 ## Select and export existing results
+
+To obtain bounded suggestions without manually collecting every GUID:
+
+```powershell
+.\.venv\Scripts\le-results.exe recommend --profile lab --limit 20 --candidates 5 --out .private\recommendations.json
+```
+
+This reviews at most 20 results/tests per model, five candidate details per model and five retained sessions per Continuous candidate, within 60 requests and a 180-second acquisition deadline. Load suggestions use matching historical configuration in recency order. Application suggestions retain available failure evidence. Continuous distinguishes enabled configuration from retained sessions and collection health. Inspect IDs, coverage and limitations before capture. A bounded subset does not prove that no suitable test exists elsewhere.
+
+Exports accept `--max-requests 200 --max-pages 10 --page-size 100 --timeout 20 --deadline 300`. Page/record limits apply per endpoint; the request/deadline limit covers the capture. Exhausting a bound leaves partial evidence and exits 2. Ctrl+C finalizes capture evidence before exit 130. Always use a new output directory.
+
+For one finite capture, including useful partial evidence, use:
+
+```powershell
+.\.venv\Scripts\le-results.exe report-capture --capture .private\captures\selected-load --out .private\reports\selected-load
+```
+
+This produces HTML, copied evidence, editable PBIP/PBIR/model files and source datasets without inventing a comparison. Review endpoint outcomes and failure coverage. Desktop opening/refresh is still a separate check.
+
+Comparison normally requires complete captures. A reviewed `comparison/1` config can explicitly set `"coverage_policy": "timer-only"` when only session-metric requests failed and timing/session/execution/event acquisition completed. All configured metrics must then use the timer table. The comparison keeps partial capture status and the resource failure warning. Failed timing or failure-coverage requests still block comparison. Never label an unconfirmed timer unit milliseconds or infer a CPU improvement from missing data.
+
+The [editable PowerShell example](../examples/customer-workflow.ps1) documents diagnosis, discovery, selected capture, comparison, snapshot and live-generation parameters. All operations call the engine. See the [prompt gallery](prompt-gallery.md) for equivalent AI requests and verification.
+
+## Approved mirrors and offline installation
+
+The tested installation path uses pip with the committed hash locks. For an approved package mirror, add `--index-url https://packages.example.com/simple` to the locked install command; keep mirror authentication in the package tool's approved credential mechanism. Do not put credentials in URLs or scripts. Mirror and offline deployment remain guidance until exercised in your environment.
+
+On a connected machine with the same target platform/runtime, download the locked wheels with `python -m pip download --require-hashes -r requirements.lock --dest wheelhouse` and build the toolkit wheel. Transfer that reviewed wheelhouse and install with `python -m pip install --no-index --find-links wheelhouse --require-hashes -r requirements.lock`, followed by the toolkit wheel with `--no-deps`. Conditional platform dependencies require a wheelhouse for each target. Customers do not need the private development references.
 
 ```powershell
 .\.venv\Scripts\le-results.exe discover --profile lab --kind runs --test-type LoadTest --limit 20 --out .private\recent-load.json

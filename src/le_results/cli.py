@@ -38,6 +38,17 @@ def parser() -> argparse.ArgumentParser:
     doctor = sub.add_parser("doctor")
     doctor.add_argument("--profile", required=True)
     doctor.add_argument("--offline", action="store_true")
+    doctor.add_argument("--out", type=Path, help="Check destination writability")
+    certificate = sub.add_parser(
+        "certificate", help="Credential-free inspection; no trust enrollment"
+    )
+    certificate.add_argument("--profile", required=True)
+    certificate.add_argument("--out", type=Path, required=True)
+    trust = sub.add_parser("trust", help="Configure independently approved profile trust")
+    trust.add_argument("--profile", required=True)
+    trust.add_argument("--ca-bundle", type=Path)
+    trust.add_argument("--approved-sha256", action="append", default=[])
+    trust.add_argument("--remove", action="store_true")
     discovery = sub.add_parser("discover")
     discovery.add_argument("--profile", required=True)
     discovery.add_argument("--kind", choices=["tests", "runs"], default="runs")
@@ -47,6 +58,11 @@ def parser() -> argparse.ArgumentParser:
     discovery.add_argument("--limit", type=int, default=20)
     discovery.add_argument("--name", help="Exact name; ambiguous names require explicit IDs")
     discovery.add_argument("--out", type=Path, required=True)
+    recommendations = sub.add_parser("recommend", help="Bounded representative result suggestions")
+    recommendations.add_argument("--profile", required=True)
+    recommendations.add_argument("--limit", type=int, default=20)
+    recommendations.add_argument("--candidates", type=int, default=5)
+    recommendations.add_argument("--out", type=Path, required=True)
     select = sub.add_parser("select")
     select.add_argument(
         "--test-type", choices=["LoadTest", "ApplicationTest", "ContinuousTest"], required=True
@@ -60,6 +76,11 @@ def parser() -> argparse.ArgumentParser:
     export.add_argument("--profile", required=True)
     export.add_argument("--selection", type=Path, required=True)
     export.add_argument("--out", type=Path, required=True)
+    export.add_argument("--max-requests", type=int, default=200)
+    export.add_argument("--max-pages", type=int, default=10)
+    export.add_argument("--page-size", type=int, default=100)
+    export.add_argument("--timeout", type=float, default=20)
+    export.add_argument("--deadline", type=float, default=300)
     verify = sub.add_parser("verify")
     verify.add_argument("capture", type=Path)
     comparison = sub.add_parser("compare")
@@ -71,6 +92,10 @@ def parser() -> argparse.ArgumentParser:
     report.add_argument("--comparison", type=Path, required=True)
     report.add_argument("--config", type=Path)
     report.add_argument("--out", type=Path, required=True)
+    finite = sub.add_parser("report-capture", help="Finite evidence report without a comparison")
+    finite.add_argument("--capture", type=Path, required=True)
+    finite.add_argument("--out", type=Path, required=True)
+    finite.add_argument("--title", default="Selected result evidence")
     synthetic = sub.add_parser("demo")
     synthetic.add_argument(
         "--scenario", choices=["windows-migration", "security-agent"], default="windows-migration"
@@ -110,24 +135,27 @@ def run(args: argparse.Namespace) -> Any:
             "credential_ref": profile.credential_ref,
         }
     if args.command == "doctor":
-        profile = store.get(args.profile)
-        vault = Vault()
-        result: dict[str, Any] = {
-            "profile": profile.name,
-            "origin": profile.origin,
-            "api_adapter": profile.api_version,
-            "python": sys.version.split()[0],
-            "platform": sys.platform,
-            "vault_backend": type(vault.backend).__name__,
-            "credential_present": vault.get(profile) is not None,
-            "tls": "trusted HTTPS",
-            "live_check": "not attempted",
-        }
-        if not args.offline:
-            with Client(profile, resolve_token(profile)) as client:
-                result["appliance_version"] = client.get("system/version")
-                result["live_check"] = "system/version GET succeeded"
-        return result
+        from .diagnostics import doctor
+
+        return doctor(store, args.profile, args.offline, args.out)
+    if args.command == "certificate":
+        from .diagnostics import inspect_certificate
+
+        return inspect_certificate(store.get(args.profile), args.out)
+    if args.command == "trust":
+        from .diagnostics import approve_trust
+
+        if args.remove:
+            if args.ca_bundle or args.approved_sha256:
+                raise ToolkitError("Use --remove without trust-file arguments.")
+            profile = store.get(args.profile)
+            store.add(Profile(profile.name, profile.origin, profile.api_version), replace=True)
+            return {"profile": profile.name, "trust_file": None, "tls": "not attempted"}
+        if not args.ca_bundle or not args.approved_sha256:
+            raise ToolkitError(
+                "Supply --ca-bundle and independently approved --approved-sha256 for each certificate."
+            )
+        return approve_trust(store, args.profile, args.ca_bundle, args.approved_sha256)
     if args.command == "select":
         start, end = args.start, args.end
         if args.rolling_hours:
@@ -147,7 +175,7 @@ def run(args: argparse.Namespace) -> Any:
         query = {"testType": args.test_type[0].lower() + args.test_type[1:], "direction": "desc"}
         if args.kind == "runs":
             query["orderBy"] = "created"
-        with Client(profile, resolve_token(profile)) as client:
+        with Client(profile, resolve_token(profile), max_requests=20, max_pages=5) as client:
             rows = client.pages(
                 "tests" if args.kind == "tests" else "tests/test-runs", query, limit=args.limit
             )
@@ -168,10 +196,41 @@ def run(args: argparse.Namespace) -> Any:
             },
         )
         return {"out": str(args.out), "count": len(rows), "bounded": True}
+    if args.command == "recommend":
+        from .recommend import recommend
+
+        profile = store.get(args.profile)
+        with Client(
+            profile,
+            resolve_token(profile),
+            max_requests=60,
+            max_pages=5,
+            page_size=100,
+            retries=0,
+            deadline_seconds=180,
+        ) as client:
+            result = recommend(client, args.limit, args.candidates)
+        write_json(args.out, result)
+        return {
+            "out": str(args.out),
+            "requests_used": result["requests_used"],
+            "models": {
+                k: {"selection": v["selection"], "reason": v["reason"]}
+                for k, v in result["models"].items()
+            },
+        }
     if args.command == "export":
         selection = Selection.read(args.selection)
         profile = store.get(args.profile)
-        with Client(profile, resolve_token(profile)) as client:
+        with Client(
+            profile,
+            resolve_token(profile),
+            max_requests=args.max_requests,
+            max_pages=args.max_pages,
+            page_size=args.page_size,
+            timeout=args.timeout,
+            deadline_seconds=args.deadline,
+        ) as client:
             manifest = capture(client, selection, args.out)
         return {
             "out": str(args.out),
@@ -201,6 +260,15 @@ def run(args: argparse.Namespace) -> Any:
         config = json.loads(args.config.read_text(encoding="utf-8")) if args.config else None
         build_report(comparison, args.out, config)
         return {"out": str(args.out), "Desktop_validation": "pending"}
+    if args.command == "report-capture":
+        from .report import build_capture_report
+
+        build_capture_report(args.capture, args.out, args.title)
+        return {
+            "out": str(args.out),
+            "scope": "finite capture evidence",
+            "Desktop_validation": "pending",
+        }
     if args.command == "demo":
         demo(args.out, args.scenario)
         return {"out": str(args.out), "provenance": "synthetic"}
@@ -219,10 +287,11 @@ def run(args: argparse.Namespace) -> Any:
 def main() -> int:
     args = parser().parse_args()
     try:
-        print(json.dumps(run(args), indent=2, ensure_ascii=True))
-        return 0
+        result = run(args)
+        print(json.dumps(result, indent=2, ensure_ascii=True))
+        return 2 if isinstance(result, dict) and result.get("ok") is False else 0
     except ToolkitError as exc:
-        print(str(exc), file=sys.stderr)
+        print(json.dumps({"ok": False, "error": exc.diagnostic()}), file=sys.stderr)
         return 2
     except KeyboardInterrupt:
         print("Cancelled.", file=sys.stderr)

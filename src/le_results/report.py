@@ -43,7 +43,8 @@ def local_query(path: Path, columns: list[tuple[str, str]]) -> str:
 def build_report(
     comparison: dict[str, Any], directory: Path, config: dict[str, Any] | None = None
 ) -> None:
-    if comparison.get("schema_version") != "comparison-result/1":
+    capture_mode = comparison.get("schema_version") == "capture-report/1"
+    if comparison.get("schema_version") not in ("comparison-result/1", "capture-report/1"):
         raise ToolkitError("Expected a comparison-result/1 artifact.")
     config = config or {
         "schema_version": "report/1",
@@ -52,7 +53,13 @@ def build_report(
     }
     if config.get("schema_version") != "report/1":
         raise ToolkitError("Unsupported report specification.")
-    supported = {"comparison_table", "change_chart", "unit_filter", "coverage_table"}
+    supported = {
+        "comparison_table",
+        "change_chart",
+        "unit_filter",
+        "coverage_table",
+        "source_table",
+    }
     if set(config.get("visuals", [])) - supported:
         raise ToolkitError(
             "Unsupported visual; use comparison_table, change_chart, unit_filter or coverage_table."
@@ -109,6 +116,7 @@ def build_report(
             for k in (
                 "sessions",
                 "executions",
+                "completed_executions",
                 "execution_failures",
                 "unended_executions",
                 "sessions_without_executions",
@@ -164,7 +172,8 @@ def build_report(
         tables.append(table)
     source_paths = comparison.get("source_captures", [])
     source_tables: dict[str, list[dict[str, Any]]] = {name: [] for name in TABLES}
-    for label, source_path in zip(("baseline", "candidate"), source_paths, strict=False):
+    roles = ("selected",) if capture_mode else ("baseline", "candidate")
+    for label, source_path in zip(roles, source_paths, strict=False):
         source = Path(source_path)
         verify_capture(source)
         shutil.copytree(source, directory / "evidence" / label)
@@ -187,6 +196,10 @@ def build_report(
         if not source_paths:
             break
         fields = sorted({k for row in rows for k in row}) or ["capture_id"]
+        if name == "measurements":
+            fields = sorted(
+                set(fields) | {"measurementId", "duration", "timestamp", "userSessionId"}
+            )
         columns = [
             (field, "double" if any(type(r.get(field)) in (float, int) for r in rows) else "string")
             for field in fields
@@ -338,6 +351,26 @@ def build_report(
                 },
             }
             position = {"x": 0, "y": 0, "width": 280, "height": 100}
+        elif name == "source_table":
+            visual = {
+                "visualType": "tableEx",
+                "query": {
+                    "queryState": {
+                        "Values": {
+                            "projections": [
+                                column("Source_measurements", field)
+                                for field in (
+                                    "measurementId",
+                                    "duration",
+                                    "timestamp",
+                                    "userSessionId",
+                                )
+                            ]
+                        }
+                    }
+                },
+            }
+            position = {"x": 0, "y": 110, "width": 1100, "height": 280}
         elif name == "change_chart":
             visual = {
                 "visualType": "clusteredBarChart",
@@ -428,9 +461,13 @@ def build_report(
         "<h1>"
         + html.escape(config["title"])
         + "</h1><p>"
-        + html.escape(comparison["baseline"]["label"])
-        + " compared with "
-        + html.escape(comparison["candidate"]["label"])
+        + (
+            html.escape(comparison["selected"]["label"])
+            if capture_mode
+            else html.escape(comparison["baseline"]["label"])
+            + " compared with "
+            + html.escape(comparison["candidate"]["label"])
+        )
         + "</p>"
         "<table><tr><th>Metric/group</th><th>Unit</th><th>Baseline mean</th><th>Candidate mean</th><th>Absolute change</th><th>Relative %</th><th>Baseline n</th><th>Candidate n</th></tr>"
         + html_rows
@@ -445,8 +482,94 @@ def build_report(
         + "</ul></html>"
     )
     (directory / "report.html").write_text(content, encoding="utf-8")
+    if capture_mode:
+        source_rows = source_tables["measurements"]
+        headers = ("measurementId", "duration", "timestamp", "userSessionId")
+        details = (
+            "<h2>Retained timer observations</h2><p>Duration units are unspecified by the API. This preview shows up to 500 rows; complete source datasets remain in the bundle.</p><table><tr>"
+            + "".join("<th>" + field + "</th>" for field in headers)
+            + "</tr>"
+        )
+        details += (
+            "".join(
+                "<tr>"
+                + "".join(
+                    "<td>"
+                    + html.escape(
+                        str(row.get(field) if row.get(field) is not None else "unavailable")
+                    )
+                    + "</td>"
+                    for field in headers
+                )
+                + "</tr>"
+                for row in source_rows[:500]
+            )
+            + "</table>"
+        )
+        details += (
+            "<h2>Endpoint outcomes</h2><pre>"
+            + html.escape(json.dumps(comparison["endpoint_outcomes"], indent=2))
+            + "</pre>"
+        )
+        (directory / "report.html").write_text(
+            content.replace("</html>", details + "</html>"), encoding="utf-8"
+        )
     (directory / ".gitignore").write_text(
         "**/.pbi/localSettings.json\n**/.pbi/cache.abf\n", encoding="utf-8"
+    )
+
+
+def build_capture_report(
+    source: Path, directory: Path, title: str = "Selected result evidence"
+) -> None:
+    manifest = verify_capture(source)
+    sessions = load_table(source, "sessions")
+    executions = load_table(source, "executions")
+    selected = {"label": title, "ids": manifest["selection"]["ids"]}
+    coverage = {
+        "scenario": title,
+        "sessions": len(sessions),
+        "executions": len(executions),
+        "completed_executions": sum(
+            r.get("state") in ("ended", "endedWithErrors") for r in executions
+        ),
+        "execution_failures": sum(row.get("state") == "endedWithErrors" for row in executions),
+        "unended_executions": sum(row.get("state") == "created" for row in executions),
+        "sessions_without_executions": sum(
+            not any(
+                e.get("userSessionId") == s.get("id") and e.get("testRunId") == s.get("testRunId")
+                for e in executions
+            )
+            for s in sessions
+        ),
+        "completeness": manifest["status"],
+        "login_states": {
+            str(state): sum(s.get("loginState") == state for s in sessions)
+            for state in {s.get("loginState") for s in sessions}
+        },
+    }
+    result = {
+        "schema_version": "capture-report/1",
+        "selected": selected,
+        "metrics": [],
+        "coverage": [coverage],
+        "warnings": [
+            *manifest["warnings"],
+            "Capture status: " + manifest["status"],
+            "Finite selected evidence; no comparison or causal claim is made.",
+        ],
+        "source_captures": [str(source.resolve())],
+        "source_manifests": [manifest],
+        "endpoint_outcomes": manifest["endpoints"],
+    }
+    build_report(
+        result,
+        directory,
+        {
+            "schema_version": "report/1",
+            "title": title,
+            "visuals": ["source_table", "coverage_table"],
+        },
     )
     (directory / "OPEN-IN-DESKTOP.txt").write_text(
         "Open Results.pbip in Power BI Desktop, refresh local files, select one unit, and reconcile "

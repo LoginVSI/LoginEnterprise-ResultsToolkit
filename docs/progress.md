@@ -4,16 +4,34 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Continuation evidence, 2026-10-13
+
+Existing branch/draft PR were retained. Checkout started clean at `9e5e6df`. A runtime upgrade removed the Python executable referenced by `.venv`. The broken environment was preserved under ignored storage and recreated with project-local 64-bit Python 3.14.8. Profiles, native enrollment and private references remain preserved. Observed client OpenSSL is 3.5.9.
+
+DNS and TCP 443 succeeded. Strict verification rejected the issuing CA with OpenSSL code 92, missing required CA key usage. The hostname-covering leaf was self-issued but signed by a separate CA. Exact leaf/issuer trust already existed in Windows ROOT. Profile trust using the independently enrolled exact leaf succeeded with strict, partial-chain and hostname verification retained. The normal client/vault read v8-preview system/version and observed Login Enterprise 6.9.2. No global trust, appliance setting or verification flag was weakened.
+
+Bounded acquisition established a complete selected Load capture, a compatible historical Load pair, Application evidence and a retained Continuous window. Resource requests return HTTP 500, including with explicit boundaries. Successful pages, endpoint failures and partial status stay preserved. Timer-only arithmetic is independently reconciled from raw records; units remain source-unconfirmed. Completed work differs and raw unended executions remain visible. No migration, causality or resource-improvement claim is made. No enabled Continuous test appeared in the bounded subset; this is not appliance-wide proof.
+
+Customer additions include bootstrap readiness, structured diagnosis, credential-free certificate inspection, approved trust replacement/removal, bounded recommendations/request limits, corrected collector identity, disabled-metric status, optional-failure continuation, timer-only policy and finite capture reports. Skills/prompt gallery call the engine. Actual HTML/snapshot projects and a selected Load refreshable project are private. Their official schemas and connector/generated M syntax pass. Desktop acceptance remains separate.
+
+Local checks pass 79 tests, lint and types. New tests use real synthetic HTTPS, including trusted/untrusted, explicit `CA:false` self-signed trust, hostname/expiry/purpose rejection and strict CA key-usage rejection. Dependency audit caught vulnerable parser versions; the supported range and locks now use audited cryptography 50.0.2. No known vulnerabilities remain. The final wheel passes isolated installation and demo/compare/report outside the checkout. Final CI results are recorded below.
+
+Desktop 2.158.1304.0 is installed; UI inventory exposes no native app/browser surfaces. Open/refresh, approved connector policy/Key enrollment, two live refreshes and new observations remain owner checkpoints. Actual account membership is administrator despite a non-elevated token; standard-user proof remains pending. Claude review failed before inference because OAuth access expired and could not refresh. The public-only snapshot, prompt and restricted runner remain ready; no independent findings exist. Private writing guidance was applied to unpublished drafts, claim map, flow/demo brief and partner handoff. Nothing was published or sent. Licensing remains an owner decision.
+
+A broader Continuous discovery returned 29 configured tests within a 100-record bound, with none enabled. Retained historical sessions remain useful, but active collection/new-data ingestion require an owner-managed test. The Load comparator now explicitly warns about differing completed-work/failure coverage. Final raw reconciliation includes successful, orchestration-diagnostic and historical Continuous evidence.
+
+This continuation and [capability matrix](capabilities.md) supersede the older table's pending-credential/live entries. Dated historical checks below remain provenance; final audit/check/CI outcomes are added as they complete.
+
 Work is on `feat/results-toolkit-foundation`. Foundation checkpoint `de5fa0f` and reporting checkpoint `dc6132f` are pushed. [Draft PR #1](https://github.com/LoginVSI/LoginEnterprise-ResultsToolkit/pull/1) records scope and acceptance gaps. The starting checkout had one initial commit and a user-added `/.private/` ignore rule, retained in this change. All three private inputs are present in the original checkout and none are tracked. No existing project license was found. Licensing remains an owner decision; no terms have been selected on the owner's behalf.
 
 | Slice | Implemented | Offline proof | Appliance proof | Desktop proof |
 |---|---|---|---|---|
 | Installable Python engine, CLI, native PowerShell wrapper | Yes | Fresh wheel and outside-source walkthrough; PowerShell 5.1/7 exercised | N/A | N/A |
-| Nonsecret profiles and native vault enrollment/status/replacement/deletion | Yes | Native Windows lookup and disposable nonsecret write/read/delete; abstraction tests pass | No token | N/A |
-| Read-only HTTPS transport, bounded retry/paging and safe errors | Yes | Negative and paging tests implemented | Pending credential | N/A |
-| Explicit Load/Application/Continuous selection and capture | Yes | Application failure, Continuous fixed window/current configuration and partial-page fixtures pass | Pending credential | N/A |
-| Raw JSON, normalized JSON/CSV, dictionary and hashed manifest | Yes | Synthetic capture and verification exercised | Pending credential | N/A |
-| Explicit metric comparison and failure/coverage evidence | Yes | Synthetic means 120/130, delta 10, relative 8.3333%; candidate failure retained | Pending compatible Load pair | N/A |
+| Nonsecret profiles and native vault enrollment/status/replacement/deletion | Yes | Native Windows lookup/roundtrip and rejection tests | Existing enrollment reused successfully | N/A |
+| Read-only HTTPS transport, bounded retry/paging and safe errors | Yes | Real HTTPS and safe-error/paging tests | Verified strict TLS and version endpoint on 6.9.2 | N/A |
+| Explicit Load/Application/Continuous selection and capture | Yes | Model, identity and partial-page tests | Selected complete Load and partial evidence across all three models | N/A |
+| Raw JSON, normalized JSON/CSV, dictionary and hashed manifest | Yes | Synthetic capture/verification | Actual source/hash/count relationships reconciled | N/A |
+| Explicit metric comparison and failure/coverage evidence | Yes | Synthetic means 120/130, delta 10, relative 8.3333%; candidate failure retained | Compatible pair, explicit timer-only arithmetic reconciled; resources failed | N/A |
 | Portable HTML and editable local-file PBIP/PBIR/model.bim report | Yes | Source evidence copied; relationships/numeric fields and official schemas checked | N/A | Pending open/refresh |
 | Refreshable acquisition and generated live model | Yes | M syntax, schemas and generated references checked; M execution pending | Pending | Pending subsequent refresh |
 | Portable AI skills and customer documentation | Yes | Three canonical skills validate; six thin host adapters; no-AI walkthrough | N/A | N/A |
@@ -46,7 +64,7 @@ Work is on `feat/results-toolkit-foundation`. Foundation checkpoint `de5fa0f` an
 - [x] Finish portable workflows, CI, customer docs, live/Desktop procedures and independent audit handoff.
 - [x] Record hosted core CI results separately from native credential proof.
 - [ ] Verify native Linux/macOS credential access on suitable hosts.
-- [ ] Run bounded live discovery/export with saved credential; use a compatible Load pair when available.
+- [x] Run bounded live discovery/export and reconcile a compatible timer-only Load pair; resource endpoint acceptance remains pending HTTP 500 remediation.
 - [ ] Open/refresh snapshot and live report in target Desktop and reconcile numeric source checks.
 - [x] Push scoped commits and create accurate draft PR.
 

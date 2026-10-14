@@ -1,5 +1,9 @@
 # Bounded, read-only appliance acceptance
 
+Run `doctor` first to establish verified TLS/API access; follow the [certificate workflow](troubleshooting.md) for trust failures. Existing enrollment can be reused. `recommend` discovers bounded candidates across all test models and records reasons. The acceptance script screens all pairs among at most five Load details, preserves later evidence after optional failures, records partial captures and exits 2 when incomplete. Bounds cover requests/pages/deadline. Results are never selected for favorable performance.
+
+On 6.9.2, selected result paths and a retained Continuous test-ID window have been exercised. Session-metric requests returned HTTP 500, including with explicit boundaries, and remain failed. Finite reports expose those outcomes. A reviewed timer-only policy can compare complete timing/failure evidence while preserving partial status, resource gaps, unfinished work and unconfirmed units. Full resource/live Desktop acceptance requires separate remediation and proof.
+
 Enroll the native credential once and verify `auth status`. The following command discovers at most 20 recent Load results, inspects at most five completed runs, and exports one run or a compatible pair. It does not create or change tests.
 
 ```powershell

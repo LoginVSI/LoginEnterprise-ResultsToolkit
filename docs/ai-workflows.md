@@ -15,6 +15,8 @@ The adapters point to the canonical workflow within the checkout. They do not co
 
 Example requests:
 
+The [prompt gallery](prompt-gallery.md) specifies inputs, artifacts, skills, no-AI commands and verification for readiness, selection, export, comparisons, reports and refinement. Installing an adapter does not prove host behavior. Current Codex use is separate evidence from Claude audit and Desktop execution.
+
 - “Find a recent completed Load run, record its ID, and export it to a private capture. Explain missing data and completeness.”
 - “Compare these two captures as baseline and candidate using this reviewed metric configuration. Preserve failures and show the sample counts.”
 - “Build an editable report from this comparison, using a unit filter, change chart and failure coverage table. Explain which checks need Desktop.”

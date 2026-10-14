@@ -19,9 +19,28 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
         raise ToolkitError("Expected comparison/1 configuration.")
     if bm["selection"]["test_type"] != cm["selection"]["test_type"]:
         raise ToolkitError("Cannot compare different test models.")
+    policy = config.get("coverage_policy", "complete")
+    if policy not in ("complete", "timer-only"):
+        raise ToolkitError("Coverage policy must be complete or explicit timer-only.")
     if bm["status"] != "complete" or cm["status"] != "complete":
-        raise ToolkitError("Comparison requires complete captures; inspect partial evidence first.")
+        failures = [
+            e for m in (bm, cm) for e in m["endpoints"] if e["status"] in ("failed", "partial")
+        ]
+        if (
+            policy != "timer-only"
+            or not failures
+            or any(m["status"] not in ("complete", "partial") for m in (bm, cm))
+            or any(not e["path"].startswith("user-session-metrics/") for e in failures)
+            or any(metric.get("table") != "measurements" for metric in config.get("metrics", []))
+        ):
+            raise ToolkitError(
+                "Comparison requires complete captures; explicit timer-only policy permits only failed session-metric endpoints with complete timing and failure evidence."
+            )
     warnings: list[str] = []
+    if bm["status"] != "complete" or cm["status"] != "complete":
+        warnings.append(
+            "TIMER-ONLY comparison of partial captures: session-metric acquisition failed. No resource comparison or full capture acceptance is established."
+        )
     if bm["provenance"] == "synthetic" or cm["provenance"] == "synthetic":
         warnings.append("SYNTHETIC demonstration; these values are not benchmark results.")
     warnings.extend(
@@ -153,6 +172,9 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
                 "scenario": scenario["label"],
                 "sessions": len(sessions),
                 "executions": len(executions),
+                "completed_executions": sum(
+                    r.get("state") in ("ended", "endedWithErrors") for r in executions
+                ),
                 "execution_failures": sum(r.get("state") == "endedWithErrors" for r in executions),
                 "unended_executions": sum(r.get("state") == "created" for r in executions),
                 "execution_state_unknown": sum(
@@ -160,7 +182,11 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
                     for r in executions
                 ),
                 "sessions_without_executions": sum(
-                    not any(e.get("userSessionId") == r.get("id") for e in executions)
+                    not any(
+                        e.get("userSessionId") == r.get("id")
+                        and e.get("testRunId") == r.get("testRunId")
+                        for e in executions
+                    )
                     for r in sessions
                 ),
                 "login_states": {
@@ -169,6 +195,19 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
                 },
                 "completeness": manifest["status"],
             }
+        )
+    if any(
+        coverage[0][key] != coverage[1][key]
+        for key in (
+            "sessions",
+            "completed_executions",
+            "execution_failures",
+            "unended_executions",
+            "login_states",
+        )
+    ):
+        warnings.append(
+            "Completed work or failure coverage differs; interpret metric changes alongside session/execution outcomes."
         )
     return {
         "schema_version": "comparison-result/1",
@@ -180,4 +219,5 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
         "warnings": sorted(set(warnings)),
         "source_manifests": [bm, cm],
         "source_captures": [str(baseline.resolve()), str(candidate.resolve())],
+        "coverage_policy": policy,
     }

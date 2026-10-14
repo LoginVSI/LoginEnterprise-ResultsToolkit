@@ -4,6 +4,8 @@ Power BI is the first reporting adapter, not the engine's only destination. The 
 
 ## Snapshot acceptance
 
+`report-capture --capture PATH --out NEW_DIRECTORY` creates a finite editable source report for one capture. It keeps partial endpoint outcomes without inventing baseline/candidate scenarios. Reconcile source rows, session/execution relationships and failures. Timer units remain unconfirmed unless separately established.
+
 Complete the synthetic quickstart, then open `artifacts/migration/report/Results.pbip` in Desktop. Enable the documented PBIP/PBIR preview features manually if your build requires them; the agent does not change application security/privacy settings. Click **Refresh**. The queries read files copied into the bundle, with no appliance credential or access.
 
 Inspect the comparison table and reconcile means 120/130, absolute change 10, relative change 8.3333%, and three observations per side against `comparison.json` and the source timer rows. The coverage table must retain one candidate execution failure. Review source run/session/execution relationships and missing values. Select one unit for a meaningful chart. Save an editable project; export a PBIT through Desktop only after validation if useful. Record build, artifact/spec hashes, selected values, refresh result and discrepancies in the progress record. Generation alone is not acceptance.

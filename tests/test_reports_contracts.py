@@ -10,7 +10,7 @@ from le_results.contracts import PAGED, SINGLE
 from le_results.errors import ToolkitError
 from le_results.evidence import TABLES, load_table, verify_capture
 from le_results.live_report import build_live_report
-from le_results.report import build_report
+from le_results.report import build_capture_report, build_report
 from le_results.synthetic import demo
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -84,6 +84,20 @@ def test_snapshot_bundle_models_and_no_appliance_queries(tmp_path):
         assert "File.Contents" in query and "Web.Contents" not in query
     comp = next(t for t in model["model"]["tables"] if t["name"] == "Comparison")
     assert next(c for c in comp["columns"] if c["name"] == "baseline_mean")["dataType"] == "double"
+
+
+def test_finite_capture_report_retains_sources_without_inventing_comparison(tmp_path):
+    demo(tmp_path / "source")
+    target = tmp_path / "finite"
+    build_capture_report(tmp_path / "source/candidate", target, "Finite evidence")
+    check_references(target)
+    assert verify_capture(target / "evidence/selected")["status"] == "complete"
+    result = json.loads((target / "comparison.json").read_text())
+    assert result["schema_version"] == "capture-report/1"
+    assert result["metrics"] == []
+    assert result["coverage"][0]["execution_failures"] == 1
+    assert "compared with" not in (target / "report.html").read_text()
+    assert "Endpoint outcomes" in (target / "report.html").read_text()
 
 
 @pytest.mark.parametrize("filename", ["live-report.json", "continuous-report.json"])

@@ -1,6 +1,5 @@
 """Bounded HTTPS transport. No response bodies, headers or URLs enter diagnostics."""
 
-import ssl
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -12,6 +11,7 @@ import httpx
 from .contracts import API_ROOT, allowed_path
 from .errors import ToolkitError
 from .profiles import Profile, canonical_origin
+from .tls import context, transport_error
 
 
 class Client:
@@ -27,6 +27,7 @@ class Client:
         page_size: int = 100,
         max_pages: int = 100,
         deadline_seconds: float = 300,
+        max_requests: int = 2000,
     ) -> None:
         if not 1 <= page_size <= 1000 or not 1 <= max_pages <= 1000:
             raise ToolkitError("Paging bounds must be positive and no larger than 1000.")
@@ -39,12 +40,12 @@ class Client:
         self.sleep, self.retries = sleep, retries
         self.page_size, self.max_pages = page_size, max_pages
         self.deadline = time.monotonic() + deadline_seconds
-        try:
-            context = ssl.create_default_context(cafile=profile.ca_bundle)
-        except (OSError, ssl.SSLError):
-            raise ToolkitError("Cannot load custom CA bundle.") from None
+        if not 1 <= max_requests <= 10000:
+            raise ToolkitError("Request bound must be 1-10000.")
+        self.max_requests, self.request_count = max_requests, 0
+        verified_context = context(profile.ca_bundle)
         self.http = httpx.Client(
-            verify=context,
+            verify=verified_context,
             timeout=httpx.Timeout(timeout),
             follow_redirects=False,
             trust_env=False,
@@ -80,18 +81,19 @@ class Client:
         if params and set(params) - permitted:
             raise ToolkitError("Unsupported query fields.")
         for attempt in range(self.retries + 1):
+            if self.request_count >= self.max_requests:
+                raise ToolkitError(
+                    "Request bound exceeded; narrow the selection.", code="request_bound"
+                )
             if time.monotonic() >= self.deadline:
                 raise ToolkitError("Capture deadline exceeded; narrow the selection.")
             try:
+                self.request_count += 1
                 response = self.http.get(self.origin + API_ROOT + "/" + path, params=params)
             except httpx.TransportError as exc:
-                # Do not render exception strings: they can contain request details.
-                if isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout)):
-                    message = "HTTPS connection failed; verify DNS, trust chain and custom CA."
-                else:
-                    message = "HTTPS request timed out or transport failed."
-                if attempt == self.retries:
-                    raise ToolkitError(message) from None
+                diagnostic = transport_error(exc)
+                if attempt == self.retries or diagnostic.code.startswith("certificate_"):
+                    raise diagnostic from None
                 self.sleep(min(2**attempt, 4))
                 continue
             status = response.status_code
@@ -99,10 +101,16 @@ class Client:
                 raise ToolkitError("Redirect refused; credentials never follow redirects.", status)
             if status == 401:
                 raise ToolkitError(
-                    "401: credential expired or invalid; replace it explicitly.", status
+                    "401: credential expired or invalid; replace it explicitly.",
+                    status,
+                    code="authentication",
                 )
             if status == 403:
-                raise ToolkitError("403: credential lacks permission for this result.", status)
+                raise ToolkitError(
+                    "403: credential lacks permission for this result.",
+                    status,
+                    code="authorization",
+                )
             if status in (429, 502, 503, 504) and attempt < self.retries:
                 delay = float(2**attempt)
                 header = response.headers.get("Retry-After", "")
@@ -118,7 +126,11 @@ class Client:
                 self.sleep(max(0, delay))
                 continue
             if status != 200:
-                raise ToolkitError(f"HTTP {status}: result endpoint failed.", status)
+                raise ToolkitError(
+                    f"HTTP {status}: result endpoint failed.",
+                    status,
+                    code="api_route_missing" if status == 404 else "http_failed",
+                )
             try:
                 data = response.json()
             except ValueError:

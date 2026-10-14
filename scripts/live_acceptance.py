@@ -9,7 +9,7 @@ from le_results.client import Client
 from le_results.compare import compare
 from le_results.contracts import route
 from le_results.errors import ToolkitError
-from le_results.evidence import capture, write_json
+from le_results.evidence import capture, verify_capture, write_json
 from le_results.profiles import ProfileStore
 from le_results.report import build_report
 from le_results.selection import Selection
@@ -24,7 +24,9 @@ def main() -> int:
     if args.out.exists() and any(args.out.iterdir()):
         raise ToolkitError("Acceptance destination must be empty.")
     profile = ProfileStore().get(args.profile)
-    with Client(profile, resolve_token(profile), deadline_seconds=300) as client:
+    with Client(
+        profile, resolve_token(profile), deadline_seconds=300, max_requests=200, max_pages=10
+    ) as client:
         recent = client.pages(
             "tests/test-runs",
             {"testType": "loadTest", "orderBy": "created", "direction": "desc"},
@@ -56,6 +58,14 @@ def main() -> int:
             "sessionMetricScheduleRate",
             "applicationDebugModeEnabled",
             "connectorProperties",
+            "rampUpDurationInMinutes",
+            "rampDownDurationInMinutes",
+            "euxEnabled",
+            "sessionMetricsEnabled",
+            "productVersion",
+            "environmentId",
+            "launcherGroups",
+            "accountGroups",
         )
 
         def compatible(left, right):
@@ -68,15 +78,33 @@ def main() -> int:
             )
 
         chosen = [details[0]]
-        for candidate in details[1:]:
-            if compatible(candidate, details[0]):
-                chosen = [candidate, details[0]]
+        for index, latest in enumerate(details):
+            for earlier in details[index + 1 :]:
+                if compatible(earlier, latest):
+                    chosen = [earlier, latest]
+                    break
+            if len(chosen) == 2:
                 break
+        write_json(
+            args.out / "selection-reasons.json",
+            {
+                "screened_ids": [r["id"] for r in details],
+                "selected_ids": [r["id"] for r in chosen],
+                "compatibility_keys": keys,
+                "reason": "First compatible completed pair in recency-ordered bounded candidates; no selection by performance outcome.",
+                "limitations": "Review retained workload completion, observation coverage and source identity; names do not establish OS or causality.",
+            },
+        )
         captures = []
         for index, run in enumerate(chosen):
             label = "baseline" if index == 0 else "candidate"
             target = args.out / label
-            manifest = capture(client, Selection("LoadTest", [run["id"]]), target)
+            try:
+                manifest = capture(client, Selection("LoadTest", [run["id"]]), target)
+            except ToolkitError:
+                if not (target / "manifest.json").exists():
+                    raise
+                manifest = verify_capture(target)
             captures.append(
                 {
                     "role": label,
@@ -87,7 +115,9 @@ def main() -> int:
                 }
             )
         result = {
-            "status": "export-verified",
+            "status": "export-verified"
+            if all(c["status"] == "complete" for c in captures)
+            else "partial",
             "captures": captures,
             "live_comparison": "pending reviewed metric units/configuration"
             if len(chosen) == 2
@@ -95,7 +125,7 @@ def main() -> int:
             "Desktop_validation": "pending",
             "OS_identity": "not inferred",
         }
-        if len(chosen) == 2 and args.comparison_config:
+        if len(chosen) == 2 and args.comparison_config and result["status"] == "export-verified":
             config = json.loads(args.comparison_config.read_text(encoding="utf-8"))
             config["baseline"]["ids"] = [chosen[0]["id"]]
             config["candidate"]["ids"] = [chosen[1]["id"]]
@@ -108,7 +138,7 @@ def main() -> int:
             )
         write_json(args.out / "acceptance.json", result)
     print(json.dumps(result, indent=2))
-    return 0
+    return 0 if result["status"] == "export-verified" else 2
 
 
 if __name__ == "__main__":

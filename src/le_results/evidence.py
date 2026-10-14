@@ -140,6 +140,7 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
     }
     tables: dict[str, list[dict[str, Any]]] = {k: [] for k in TABLES}
     counter = 0
+    result_id: str | None = None
 
     def acquire(
         path: str,
@@ -176,16 +177,31 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                 rows = data if isinstance(data, list) else [data]
                 if any(not isinstance(row, dict) for row in rows):
                     raise ToolkitError("Unexpected source row type.")
+                if table in (
+                    "sessions",
+                    "executions",
+                    "measurements",
+                    "events",
+                    "session_metrics",
+                    "eux",
+                ) and any(row.get("testRunId") not in (None, result_id) for row in rows):
+                    raise ToolkitError(
+                        "Returned source result identity differs from selected endpoint.",
+                        code="source_identity",
+                    )
                 tables[table].extend(normalize(row, captured) for row in rows)
             outcome["status"] = "empty" if outcome["count"] == 0 else "complete"
             return data
         except ToolkitError as exc:
             outcome["error"] = str(exc)
+            outcome["diagnostic"] = exc.diagnostic()
             if optional and exc.status in (404, 405) and outcome["count"] == 0:
                 outcome["status"] = "unavailable"
                 manifest["warnings"].append("Optional endpoint unavailable: " + path)
                 return None
             outcome["status"] = "partial" if outcome["count"] else "failed"
+            if optional:
+                return None
             raise
 
     try:
@@ -234,12 +250,12 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                     tables["current_configuration"][-1]["_selected_result_id"] = selected
             else:
                 current = None
-            if current and current.get("sessionMetricGroupKey"):
+            if current and current.get("sessionMetricDefinitionGroupId"):
                 first_collector = len(tables["collectors"])
                 acquire(
                     route(
                         "session-metric-definition-groups/{id}/members",
-                        id=current["sessionMetricGroupKey"],
+                        id=current["sessionMetricDefinitionGroupId"],
                     ),
                     "collectors",
                     True,
@@ -248,7 +264,7 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                 for collector in tables["collectors"][first_collector:]:
                     collector["configuration_scope"] = "current"
                     collector["_selected_result_id"] = selected
-                    collector["_collector_group_id"] = current["sessionMetricGroupKey"]
+                    collector["_collector_group_id"] = current["sessionMetricDefinitionGroupId"]
             manifest["warnings"].append(
                 "Current collector definitions do not establish historical collector settings."
             )
@@ -274,13 +290,30 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                 {**window, "include": "all"},
             )
             acquire(route("test-runs/{id}/events", id=result_id), "events", True, window)
-            acquire(
-                route("user-session-metrics/{id}", id=result_id),
-                "session_metrics",
-                True,
-                window,
-                True,
-            )
+            historical = run.get("testConfigurationSnapshot") or {}
+            metric_settings = run if selection.test_type == "ContinuousTest" else historical
+            metric_path = route("user-session-metrics/{id}", id=result_id)
+            if metric_settings.get("sessionMetricsEnabled") is False:
+                manifest["endpoints"].append(
+                    {
+                        "path": metric_path,
+                        "query": window,
+                        "status": "disabled",
+                        "count": None,
+                        "reason": "Source configuration explicitly disables session metrics",
+                        "configuration_scope": "current"
+                        if selection.test_type == "ContinuousTest"
+                        else "historical",
+                    }
+                )
+            else:
+                first_metric = len(tables["session_metrics"])
+                acquire(metric_path, "session_metrics", True, window, True)
+                for row in tables["session_metrics"][first_metric:]:
+                    row["_selected_result_id"] = result_id
+                    if row.get("testRunId") is None:
+                        row["testRunId"] = result_id
+                        row["_testRunId_from_endpoint"] = True
             if selection.test_type != "ApplicationTest":
                 acquire(
                     route("test-runs/{id}/eux-results", id=result_id),
@@ -288,7 +321,11 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                     params=window,
                     optional=True,
                 )
-        manifest["status"] = "complete"
+        manifest["status"] = (
+            "partial"
+            if any(e["status"] in ("failed", "partial") for e in manifest["endpoints"])
+            else "complete"
+        )
     except (ToolkitError, KeyboardInterrupt, KeyError, TypeError, ValueError) as exc:
         manifest["status"] = (
             "partial"
@@ -309,6 +346,10 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
             "Capture incomplete. Inspect manifest endpoint outcomes; recapture to a new directory."
         ) from None
     finalize(directory, manifest, tables)
+    if manifest["status"] != "complete":
+        raise ToolkitError(
+            "Capture incomplete. Inspect manifest endpoint outcomes; recapture to a new directory."
+        )
     return manifest
 
 

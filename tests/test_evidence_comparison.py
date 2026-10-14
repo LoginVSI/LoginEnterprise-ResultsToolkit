@@ -46,6 +46,8 @@ def test_independent_arithmetic_and_failure_reconciliation(pair):
     assert row["relative_change_percent"] == pytest.approx(100 / 12)
     assert row["baseline_samples"] == row["candidate_samples"] == 3
     assert result["coverage"][1]["execution_failures"] == 1
+    assert result["coverage"][1]["completed_executions"] == 1
+    assert any("Completed work" in w for w in result["warnings"])
     assert row["interpretation"] == "worsened"
 
 
@@ -73,6 +75,45 @@ def test_zero_baseline_relative_undefined(pair):
     edit_capture(b, "measurements", rows)
     row = compare(b, c, config)["metrics"][0]
     assert row["absolute_change"] == 130 and row["relative_change_percent"] is None
+
+
+def test_explicit_timer_only_policy_keeps_failed_resource_evidence(pair):
+    b, c, config = pair
+    for directory in (b, c):
+        manifest = verify_capture(directory)
+        manifest["status"] = "partial"
+        manifest["endpoints"].append(
+            {
+                "path": "user-session-metrics/" + BASE,
+                "status": "failed",
+                "count": 0,
+                "error": "HTTP 500",
+            }
+        )
+        finalize(directory, manifest, {k: load_table(directory, k) for k in TABLES})
+    with pytest.raises(ToolkitError, match="complete captures"):
+        compare(b, c, config)
+    config["coverage_policy"] = "timer-only"
+    result = compare(b, c, config)
+    assert result["metrics"][0]["baseline_mean"] == 120
+    assert result["coverage"][0]["completeness"] == "partial"
+    assert any("TIMER-ONLY" in w for w in result["warnings"])
+    config["metrics"][0]["table"] = "session_metrics"
+    with pytest.raises(ToolkitError, match="complete captures"):
+        compare(b, c, config)
+
+
+def test_timer_only_refuses_failed_timing_endpoint(pair):
+    b, c, config = pair
+    manifest = verify_capture(c)
+    manifest["status"] = "partial"
+    manifest["endpoints"].append(
+        {"path": "test-runs/" + CANDIDATE + "/measurements", "status": "partial", "count": 1}
+    )
+    finalize(c, manifest, {k: load_table(c, k) for k in TABLES})
+    config["coverage_policy"] = "timer-only"
+    with pytest.raises(ToolkitError, match="complete captures"):
+        compare(b, c, config)
 
 
 def test_missing_and_nonfinite_values_are_not_samples(pair):
@@ -394,7 +435,12 @@ def test_current_collector_associations_survive_multiple_runs(tmp_path):
             )
         if path.endswith("/tests/" + APP):
             return httpx.Response(
-                200, json={"id": APP, "type": "ApplicationTest", "sessionMetricGroupKey": EXECUTION}
+                200,
+                json={
+                    "id": APP,
+                    "type": "ApplicationTest",
+                    "sessionMetricDefinitionGroupId": EXECUTION,
+                },
             )
         if path.endswith("/members"):
             return httpx.Response(
@@ -425,3 +471,27 @@ def test_current_collector_associations_survive_multiple_runs(tmp_path):
         for r in collectors
     )
     assert all(r["configuration_scope"] == "historical" for r in load_table(tmp_path, "runs"))
+
+
+def test_endpoint_identity_mismatch_preserves_raw_failure(tmp_path):
+    def respond(req):
+        response = mock_capture(req)
+        if req.url.path.endswith("/measurements"):
+            data = response.json()
+            data["items"][0]["testRunId"] = CANDIDATE
+            return httpx.Response(200, json=data)
+        return response
+
+    with Client(
+        Profile("test", "https://appliance.example.com"),
+        "fake",
+        transport=httpx.MockTransport(respond),
+    ) as client:
+        with pytest.raises(ToolkitError, match="incomplete"):
+            capture(client, Selection("ApplicationTest", [BASE]), tmp_path)
+    manifest = verify_capture(tmp_path)
+    assert manifest["status"] == "partial"
+    assert any(
+        e.get("diagnostic", {}).get("code") == "source_identity" for e in manifest["endpoints"]
+    )
+    assert load_table(tmp_path, "measurements") == []
