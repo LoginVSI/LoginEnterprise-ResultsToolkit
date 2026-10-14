@@ -6,6 +6,7 @@ import os
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit
 
 from platformdirs import user_config_path
@@ -41,6 +42,7 @@ class Profile:
     origin: str
     api_version: str = "v8-preview"
     ca_bundle: str | None = None
+    approved_sha256: tuple[str, ...] = ()
 
     @property
     def credential_ref(self) -> str:
@@ -58,16 +60,30 @@ class ProfileStore:
     def __init__(self, directory: Path | None = None) -> None:
         self.path = (directory or config_dir()) / "profiles.json"
 
-    def read(self) -> dict[str, dict[str, str | None]]:
+    def read(self) -> dict[str, dict[str, Any]]:
         if not self.path.exists():
             return {}
         try:
             profiles = json.loads(self.path.read_text(encoding="utf-8"))
-            allowed = {"origin", "api_version", "ca_bundle", "credential_ref"}
+            allowed = {"origin", "api_version", "ca_bundle", "credential_ref", "approved_sha256"}
             if not isinstance(profiles, dict) or any(
                 not isinstance(v, dict) or set(v) - allowed for v in profiles.values()
             ):
                 raise ValueError
+            for name, values in profiles.items():
+                if not isinstance(values.get("origin"), str) or not isinstance(values.get("api_version"), str):
+                    raise ValueError
+                origin = canonical_origin(values["origin"])
+                if values.get("ca_bundle") is not None and not isinstance(values["ca_bundle"], str):
+                    raise ValueError
+                fingerprints = values.get("approved_sha256", [])
+                if not isinstance(fingerprints, list) or any(
+                    not isinstance(value, str) or not re.fullmatch("[A-F0-9]{64}", value)
+                    for value in fingerprints
+                ):
+                    raise ValueError
+                if values.get("credential_ref", Profile(name, origin).credential_ref) != Profile(name, origin).credential_ref:
+                    raise ValueError
             return profiles
         except (ValueError, OSError):
             raise ToolkitError(
@@ -83,6 +99,7 @@ class ProfileStore:
             canonical_origin(str(values["origin"])),
             str(values["api_version"]),
             values.get("ca_bundle"),
+            tuple(values.get("approved_sha256") or ()),
         )
         canonical_origin(profile.origin)
         if profile.api_version != "v8-preview":

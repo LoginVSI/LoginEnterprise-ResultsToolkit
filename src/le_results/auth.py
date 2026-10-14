@@ -76,6 +76,10 @@ def hidden_token() -> str:
 
 def resolve_token(profile: Profile) -> str:
     override = os.environ.get("LE_RESULTS_TOKEN")
+    if override is not None and os.environ.get("LE_RESULTS_TOKEN_SCOPE") != profile.credential_ref:
+        raise ToolkitError(
+            "Runtime credential override needs the exact profile credential_ref in LE_RESULTS_TOKEN_SCOPE."
+        )
     token = override if override is not None else Vault().get(profile)
     if not token or any(c.isspace() for c in token):
         raise ToolkitError(

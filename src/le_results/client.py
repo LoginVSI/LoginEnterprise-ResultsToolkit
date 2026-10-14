@@ -1,5 +1,7 @@
 """Bounded HTTPS transport. No response bodies, headers or URLs enter diagnostics."""
 
+import json
+import math
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -36,6 +38,16 @@ class Client:
         if not token or any(c.isspace() for c in token):
             raise ToolkitError("Invalid local credential.")
         self.origin = canonical_origin(profile.origin)
+        if (
+            not math.isfinite(timeout)
+            or not math.isfinite(deadline_seconds)
+            or min(timeout, deadline_seconds) <= 0
+        ):
+            raise ToolkitError("Timeout and deadline must be finite positive seconds.")
+        if not 0 <= retries <= 5:
+            raise ToolkitError("Retries must be bounded to 0-5.")
+        self.timeout = timeout
+        self.redactions = 0
         self._token = token
         self.sleep, self.retries = sleep, retries
         self.page_size, self.max_pages = page_size, max_pages
@@ -43,7 +55,7 @@ class Client:
         if not 1 <= max_requests <= 10000:
             raise ToolkitError("Request bound must be 1-10000.")
         self.max_requests, self.request_count = max_requests, 0
-        verified_context = context(profile.ca_bundle)
+        verified_context = context(profile.ca_bundle, profile.approved_sha256)
         self.http = httpx.Client(
             verify=verified_context,
             timeout=httpx.Timeout(timeout),
@@ -80,6 +92,24 @@ class Client:
         }
         if params and set(params) - permitted:
             raise ToolkitError("Unsupported query fields.")
+        return self._request(API_ROOT + "/" + path, params)
+
+    def get_contract(self) -> Any:
+        """Read only the appliance's explicit v8-preview Swagger through normal security."""
+        return self._request(API_ROOT + "/openapi.json", None)
+
+    def get_documentation(self, path: str) -> str:
+        if path not in (
+            "swagger/index.html",
+            "v8-preview/docs/index.html",
+            "swagger/swagger-ui-init.js",
+        ):
+            raise ToolkitError("Documentation path is outside the explicit v8-preview allowlist.")
+        return str(self._request("/publicApi/" + path, None, json_response=False))
+
+    def _request(
+        self, relative_path: str, params: dict[str, Any] | None, *, json_response: bool = True
+    ) -> Any:
         for attempt in range(self.retries + 1):
             if self.request_count >= self.max_requests:
                 raise ToolkitError(
@@ -89,14 +119,22 @@ class Client:
                 raise ToolkitError("Capture deadline exceeded; narrow the selection.")
             try:
                 self.request_count += 1
-                response = self.http.get(self.origin + API_ROOT + "/" + path, params=params)
+                response = self.http.get(
+                    self.origin + relative_path,
+                    params=params,
+                    timeout=min(self.timeout, self.deadline - time.monotonic()),
+                )
             except httpx.TransportError as exc:
                 diagnostic = transport_error(exc)
                 if attempt == self.retries or diagnostic.code.startswith("certificate_"):
                     raise diagnostic from None
-                self.sleep(min(2**attempt, 4))
+                self._wait(min(2**attempt, 4))
                 continue
             status = response.status_code
+            if time.monotonic() >= self.deadline:
+                raise ToolkitError(
+                    "Capture deadline exceeded; narrow the selection.", code="deadline"
+                )
             if 300 <= status < 400:
                 raise ToolkitError("Redirect refused; credentials never follow redirects.", status)
             if status == 401:
@@ -123,7 +161,7 @@ class Client:
                         pass
                 if delay > 30:
                     raise ToolkitError("Retry-After exceeds bounded wait; retry later.", status)
-                self.sleep(max(0, delay))
+                self._wait(max(0, delay))
                 continue
             if status != 200:
                 raise ToolkitError(
@@ -131,6 +169,8 @@ class Client:
                     status,
                     code="api_route_missing" if status == 404 else "http_failed",
                 )
+            if not json_response:
+                return self._redact(response.text)
             try:
                 data = response.json()
             except ValueError:
@@ -142,6 +182,13 @@ class Client:
 
     def _redact(self, value: Any) -> Any:
         if isinstance(value, dict):
+            self.redactions += sum(
+                any(
+                    s in k.lower().replace("_", "")
+                    for s in ("authorization", "password", "secret", "token", "apikey", "cookie")
+                )
+                for k in value
+            )
             return {
                 k: "[REDACTED]"
                 if any(
@@ -163,14 +210,22 @@ class Client:
         if isinstance(value, str):
             import re
 
+            original = value
             value = value.replace(self._token, "[REDACTED]")
             value = re.sub(r"(?i)bearer\s+[^\s\"'<>]+", "Bearer [REDACTED]", value)
-            return re.sub(
+            safe = re.sub(
                 r"(?i)(token|api_?key|password|secret|authorization)=([^&\s]+)",
                 r"\1=[REDACTED]",
                 value,
             )
+            self.redactions += safe != original
+            return safe
         return value
+
+    def _wait(self, seconds: float) -> None:
+        if not math.isfinite(seconds) or seconds >= self.deadline - time.monotonic():
+            raise ToolkitError("Retry exceeds remaining capture deadline.", code="deadline")
+        self.sleep(seconds)
 
     def pages(
         self,
@@ -182,6 +237,7 @@ class Client:
         offset = 0
         result: list[dict[str, Any]] = []
         expected_total: int | None = None
+        seen_rows: set[str] = set()
         for page in range(self.max_pages):
             count = min(self.page_size, limit - len(result)) if limit else self.page_size
             query = {
@@ -207,6 +263,13 @@ class Client:
             expected_total = total
             if on_page:
                 on_page(page, data)
+            page_rows = {json.dumps(row, sort_keys=True, allow_nan=False) for row in items}
+            if seen_rows & page_rows:
+                raise ToolkitError(
+                    "Overlapping paging rows; capture incomplete. Recapture a stable window.",
+                    code="paging_overlap",
+                )
+            seen_rows.update(page_rows)
             result.extend(items)
             offset += len(items)
             if limit and len(result) >= limit:

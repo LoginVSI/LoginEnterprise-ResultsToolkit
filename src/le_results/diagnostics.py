@@ -100,7 +100,7 @@ def doctor(store: ProfileStore, name: str, offline: bool, out: Path | None) -> d
         result.update(
             origin=profile.origin, api_adapter=profile.api_version, ca_bundle=profile.ca_bundle
         )
-        verified = context(profile.ca_bundle)
+        verified = context(profile.ca_bundle, profile.approved_sha256)
         result["verification_settings"] = {
             "verify_flags": int(verified.verify_flags),
             "hostname_validation": verified.check_hostname,
@@ -115,6 +115,18 @@ def doctor(store: ProfileStore, name: str, offline: bool, out: Path | None) -> d
         result["vault_backend"] = type(vault.backend).__name__
         result["credential_present"] = vault.get(profile) is not None
         result["runtime_credential_override_present"] = "LE_RESULTS_TOKEN" in os.environ
+        if (
+            result["runtime_credential_override_present"]
+            and os.environ.get("LE_RESULTS_TOKEN_SCOPE") != profile.credential_ref
+        ):
+            _failure(
+                result,
+                "credential_scope",
+                ToolkitError(
+                    "Runtime override scope differs from the selected profile.",
+                    code="credential_scope",
+                ),
+            )
         if not result["credential_present"] and not result["runtime_credential_override_present"]:
             _failure(
                 result,
@@ -287,7 +299,13 @@ def approve_trust(
             code="trust_file_invalid",
         ) from None
     store.add(
-        Profile(profile.name, profile.origin, profile.api_version, str(path.resolve())),
+        Profile(
+            profile.name,
+            profile.origin,
+            profile.api_version,
+            str(path.resolve()),
+            tuple(sorted(actual)),
+        ),
         replace=True,
     )
     return {

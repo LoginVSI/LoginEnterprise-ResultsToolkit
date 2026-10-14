@@ -28,6 +28,7 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
         ]
         if (
             policy != "timer-only"
+            or any(m.get("error") for m in (bm, cm))
             or not failures
             or any(m["status"] not in ("complete", "partial") for m in (bm, cm))
             or any(not e["path"].startswith("user-session-metrics/") for e in failures)
@@ -36,6 +37,33 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
             raise ToolkitError(
                 "Comparison requires complete captures; explicit timer-only policy permits only failed session-metric endpoints with complete timing and failure evidence."
             )
+        for directory, manifest in ((baseline, bm), (candidate, cm)):
+            completed = {
+                e["path"] for e in manifest["endpoints"] if e["status"] in ("complete", "empty")
+            }
+            for selected in manifest["selection"]["ids"]:
+                prefix = "test-runs/" + selected
+                required = {
+                    (
+                        "tests/"
+                        if manifest["selection"]["test_type"] == "ContinuousTest"
+                        else "test-runs/"
+                    )
+                    + selected,
+                    *(
+                        prefix + "/" + suffix
+                        for suffix in ("user-sessions", "measurements", "events")
+                    ),
+                    *(
+                        prefix + "/user-sessions/" + r["id"] + "/app-executions"
+                        for r in load_table(directory, "sessions")
+                        if r.get("testRunId") == selected
+                    ),
+                }
+                if not required.issubset(completed):
+                    raise ToolkitError(
+                        "Comparison requires complete captures for every selected result."
+                    )
     warnings: list[str] = []
     if bm["status"] != "complete" or cm["status"] != "complete":
         warnings.append(
@@ -49,6 +77,7 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
             "Arithmetic observation means use equal weight per retained observation, not per device.",
         ]
     )
+    warnings.extend(w for m in (bm, cm) for w in m.get("warnings", []))
     sides = [(baseline, bm, config["baseline"]), (candidate, cm, config["candidate"])]
     for _directory, manifest, scenario in sides:
         if not isinstance(scenario, dict) or not scenario.get("label") or not scenario.get("ids"):
@@ -93,6 +122,12 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
         if not isinstance(match, dict) or not match:
             raise ToolkitError("Specify exact metric identity fields in match.")
         group_by = metric.get("group_by", [])
+        identities = (
+            ("applicationId", "measurementId") if table == "measurements" else ("displayName",)
+        )
+        for identity in identities:
+            if identity not in match and identity not in group_by:
+                raise ToolkitError(f"Metric identity requires {identity} in match or group_by.")
         if table == "session_metrics" and not {"instance", "fieldName", "unit"}.issubset(group_by):
             raise ToolkitError("Session metrics must group by instance, fieldName and unit.")
         groups: list[dict[tuple[Any, ...], dict[str, Any]]] = []
@@ -117,7 +152,7 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
                     bucket["missing"] += 1
                 session = row.get("userSessionId", row.get("userSessionKey"))
                 if session:
-                    bucket["sessions"].add(session)
+                    bucket["sessions"].add((row.get("testRunId"), session))
             groups.append(buckets)
         for key in sorted(set(groups[0]) | set(groups[1]), key=str) or [()]:
             b, c = [g.get(key, {"values": [], "missing": 0, "sessions": set()}) for g in groups]
@@ -220,4 +255,5 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
         "source_manifests": [bm, cm],
         "source_captures": [str(baseline.resolve()), str(candidate.resolve())],
         "coverage_policy": policy,
+        "configuration": config,
     }

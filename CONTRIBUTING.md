@@ -16,11 +16,11 @@ Install the development lock into an isolated environment and install the packag
 
 Tests cover actual selection/capture/comparison/report behavior, contract paths, paging/auth/TLS failures, unit and instance identity, unavailable measurements and independent numeric targets. Keep real captures and credentials out of fixtures. Synthetic values must remain labeled synthetic. Add regressions for demonstrated risks; avoid tests that only reproduce implementation wording.
 
-Microsoft M syntax checks are optional development checks, separate from the Python runtime:
+Microsoft M syntax checks require Node.js 22+ and npm. These are optional development dependencies, separate from the Python customer runtime:
 
 ```powershell
-npm.cmd install --prefix .private\powerquery-validation @microsoft/powerquery-parser@2.0.0
-node scripts\validate_m.cjs .private\powerquery-validation
+npm.cmd ci --ignore-scripts --prefix scripts\powerquery-validation
+node scripts\validate_m.cjs scripts\powerquery-validation
 ```
 
 Update locks deliberately with `uv pip compile pyproject.toml --universal --python-version 3.11 --generate-hashes -o requirements.lock` and the corresponding `--extra dev` command. Resolve from the minimum runtime so older Python's conditional dependencies are hashed too. Review package versions and audit results. Build a wheel with `python -m build --wheel --outdir artifacts/wheels`, then run `python scripts/installation_smoke.py` with a new ignored environment path. No release or package publication is part of preview work.

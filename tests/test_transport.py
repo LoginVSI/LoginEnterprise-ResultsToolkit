@@ -163,6 +163,7 @@ def test_failed_later_page_not_successful_empty():
 
 
 def test_deadline_prevents_request():
-    with client(lambda _: pytest.fail("deadline must stop requests"), deadline_seconds=-1) as c:
+    with client(lambda _: pytest.fail("deadline must stop requests"), deadline_seconds=1) as c:
+        c.deadline = 0
         with pytest.raises(ToolkitError, match="deadline"):
             c.get("system/version")

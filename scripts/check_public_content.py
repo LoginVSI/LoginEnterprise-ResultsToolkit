@@ -22,7 +22,6 @@ def main() -> None:
         r"[A-Za-z]:[\\/]Users[\\/][^\s\"<>]+",
         r"[A-Za-z]:[\\/]personalRepos[\\/]",
         r"https?://[^\s\"<>]*cloudapp\.azure\.com",
-        r"bplev[a-z0-9]+\.southcentralus",
     ]
     failures = []
     for name in tracked:

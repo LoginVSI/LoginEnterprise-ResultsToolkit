@@ -10,7 +10,7 @@
       "name": "Selected timer (replace identity and verify unit)",
       "table": "measurements",
       "value_field": "duration",
-      "match": {"measurementId": "replace-with-discovered-timer-id"},
+      "match": {"measurementId": "replace-with-discovered-timer-id", "applicationId": "33333333-3333-4333-8333-333333333333"},
       "group_by": [],
       "unit": "operator-confirmed unit required",
       "semantics": "duration",

@@ -127,7 +127,14 @@ def server(
     thread.start()
     try:
         yield (
-            Profile("local", f"https://localhost:{http.server_port}", ca_bundle=str(trust)),
+            Profile(
+                "local",
+                f"https://localhost:{http.server_port}",
+                ca_bundle=str(trust),
+                approved_sha256=(
+                    (leaf if self_signed else ca).fingerprint(hashes.SHA256()).hex().upper(),
+                ),
+            ),
             requests,
             leaf,
         )
@@ -183,8 +190,6 @@ def test_untrusted_rejected_and_inspection_never_sends_http_or_enrolls_trust(tmp
 
 
 def test_strict_missing_ca_key_usage_rejection(tmp_path):
-    if not context().verify_flags & ssl.VERIFY_X509_STRICT:
-        pytest.skip("Older runtime default does not enable strict verification")
     with server(tmp_path, ca_key_usage=False) as (profile, requests, _):
         with Client(profile, "synthetic-secret", retries=0) as client:
             with pytest.raises(ToolkitError) as failure:
@@ -207,16 +212,16 @@ def test_approved_self_issued_leaf_trust_keeps_runtime_flags(tmp_path):
         # This is explicitly approved synthetic material, never a network-fetched enrollment.
         trust = tmp_path / "trust.pem"
         trust.write_bytes(leaf.public_bytes(serialization.Encoding.PEM))
+        profile = Profile(
+            profile.name,
+            profile.origin,
+            ca_bundle=str(trust),
+            approved_sha256=(leaf.fingerprint(hashes.SHA256()).hex().upper(),),
+        )
         default_flags = context(str(trust)).verify_flags
         with Client(profile, "synthetic-secret", retries=0) as client:
-            if default_flags & ssl.VERIFY_X509_PARTIAL_CHAIN:
-                assert client.get("system/version")["currentVersion"] == "synthetic"
-                assert requests == ["/publicApi/v8-preview/system/version"]
-            else:
-                with pytest.raises(ToolkitError) as failure:
-                    client.get("system/version")
-                assert failure.value.verify_code is not None
-                assert requests == []
+            assert client.get("system/version")["currentVersion"] == "synthetic"
+            assert requests == ["/publicApi/v8-preview/system/version"]
         assert context(str(trust)).verify_flags == default_flags
 
 
@@ -241,7 +246,11 @@ def test_no_key_logging_and_runtime_default_flags(monkeypatch, tmp_path):
     assert safe.keylog_filename is None
     assert not (tmp_path / "secrets.log").exists()
     monkeypatch.delenv("SSLKEYLOGFILE")
-    assert safe.verify_flags == ssl.create_default_context().verify_flags
+    assert safe.verify_flags == (
+        ssl.create_default_context().verify_flags
+        | ssl.VERIFY_X509_STRICT
+        | ssl.VERIFY_X509_PARTIAL_CHAIN
+    )
     assert safe.check_hostname and safe.verify_mode == ssl.CERT_REQUIRED
 
 

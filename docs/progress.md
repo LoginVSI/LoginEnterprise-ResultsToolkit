@@ -4,6 +4,20 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Independent review and resource recovery, 2026-10-13
+
+After authentication renewal, Claude Code completed the prepared restricted audit of the public-only `d5cb29f` snapshot. It independently ran 80 tests, lint and types, and recomputed synthetic arithmetic. No private inputs, appliance access or editing tools were available. Original findings are preserved privately; [dispositions](audit-2026-10-13.md) separate confirmed fixes from accepted platform/runtime limits. Reported reproductions were code traces, followed here by executed regressions.
+
+Confirmed fixes cover windowed unsuccessful-logon coverage, interrupted multi-result timer-only gates, approved trust fingerprints, strict/partial-chain flags across supported Python versions, metric application/collector identity, role-scoped snapshot keys, finite live acquisition, native Power Query credential semantics, missing counts, source validation and safe wrappers. Current Continuous settings no longer suppress historical resource retrieval. Capture manifests record duplicate removal and redactions. Report generation verifies comparison output against retained configuration and source artifacts. CI now checks generated M and report schemas with a locked parser dependency.
+
+Minimal one-record requests isolated the resource defect: omitted `orderBy` returns HTTP 500; direction alone still fails; either documented sort key succeeds. The actual appliance ReDoc page identifies `/publicApi/v8-preview/openapi.json`. Its resource operation parameters and response definitions match the checked-in Swagger. Explicit timestamp ordering is the verified client workaround; the server-side internal cause was not inspected.
+
+New bounded captures of the selected Load pair, successful Application result and historical Continuous window are complete. All return successful empty resource envelopes, distinct from missing or failed acquisition and from a measured zero. Earlier failed captures remain preserved. The windowed Continuous session union retains two sessions, including an aborted logon. The comparison now groups timers by application identity and retains the same previously reconciled values, source-unconfirmed units and completed-work limitations. No CPU/memory or active-collection acceptance is claimed.
+
+The second restricted Claude review independently passed 91 tests, lint and types and confirmed the first material fixes. It found three further medium issues in changing entity versions, incomplete timer identity and omitted report provenance. These were fixed with executed regressions: identity conflicts retain raw data and prevent complete acceptance, timer identity requires both application and timer IDs, and external report input cannot skip source validation. Expected session-query overlap is recorded separately from page anomalies. The API filter gap for never-logged-in sessions created before a window stays documented. Original findings from both reviews remain preserved.
+
+Independent raw reconciliation passes for four new captures and both timer metrics. A fresh wheel installation/import and offline workflow outside the checkout pass. PowerShell 5.1/7 readiness and wrappers, audited Python/npm dependencies, four report schema checks, connector/generated M parsing and all three skill validators pass. Final regression, wheel/report revalidation, independent review and pushed CI outcomes are recorded as they complete. Desktop refresh, standard-user/native Linux/macOS vault proof, active Continuous/new observations and licensing remain separate owner checkpoints. This checkpoint supersedes the prior resource/audit blockers below.
+
 ### Continuation evidence, 2026-10-13
 
 Existing branch/draft PR were retained. Checkout started clean at `9e5e6df`. A runtime upgrade removed the Python executable referenced by `.venv`. The broken environment was preserved under ignored storage and recreated with project-local 64-bit Python 3.14.8. Profiles, native enrollment and private references remain preserved. Observed client OpenSSL is 3.5.9.
@@ -39,7 +53,7 @@ Work is on `feat/results-toolkit-foundation`. Foundation checkpoint `de5fa0f` an
 | Portable AI skills and customer documentation | Yes | Three canonical skills validate; six thin host adapters; no-AI walkthrough | N/A | N/A |
 | Hosted Windows/Linux/macOS core CI | Yes | Six OS/Python combinations and M parser pass, including fresh wheel walkthroughs | N/A | N/A |
 | InfluxDB/Grafana | Planned | No implementation | No | N/A |
-| Independent Claude Code audit | Ready prompt in claude-audit.md | Not run | N/A | N/A |
+| Independent Claude Code audit | Completed public-only review and documented dispositions | Claude ran tests/lint/types | No appliance requests | No Desktop/host proof |
 
 ## Decisions and contract evidence
 
@@ -66,7 +80,7 @@ Work is on `feat/results-toolkit-foundation`. Foundation checkpoint `de5fa0f` an
 - [x] Finish portable workflows, CI, customer docs, live/Desktop procedures and independent audit handoff.
 - [x] Record hosted core CI results separately from native credential proof.
 - [ ] Verify native Linux/macOS credential access on suitable hosts.
-- [x] Run bounded live discovery/export and reconcile a compatible timer-only Load pair; resource endpoint acceptance remains pending HTTP 500 remediation.
+- [x] Run bounded live discovery/export and reconcile the selected Load pair. Explicit sorting recovers resource requests; measured resource coverage remains absent in successful empty responses.
 - [ ] Open/refresh snapshot and live report in target Desktop and reconcile numeric source checks.
 - [x] Push scoped commits and create accurate draft PR.
 

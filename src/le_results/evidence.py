@@ -62,8 +62,15 @@ def finalize(
     directory: Path, manifest: dict[str, Any], tables: dict[str, list[dict[str, Any]]]
 ) -> None:
     manifest["table_counts"] = {}
+    manifest["deduplicated_rows"] = {}
     for table in TABLES:
         rows = unique(tables.get(table, []))
+        removed = len(tables.get(table, [])) - len(rows)
+        manifest["deduplicated_rows"][table] = removed
+        if removed:
+            manifest["warnings"].append(
+                f"Exact duplicate rows removed from {table}: {removed}; inspect raw pages and query overlap."
+            )
         manifest["table_counts"][table] = len(rows)
         write_json(directory / "normalized" / f"{table}.json", rows)
         fields = sorted({k for row in rows for k in row}) or ["capture_id"]
@@ -189,6 +196,38 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                         "Returned source result identity differs from selected endpoint.",
                         code="source_identity",
                     )
+                if table in ("sessions", "executions"):
+                    entities: dict[str, dict[str, Any]] = {}
+                    for row in rows:
+                        identity = row.get("id")
+                        if not isinstance(identity, str):
+                            raise ToolkitError(
+                                "Source entity identifier missing.", code="source_identity"
+                            )
+                        if identity in entities and row != entities[identity]:
+                            manifest.setdefault("identity_conflicts", []).append(
+                                {
+                                    "table": table,
+                                    "testRunId": result_id,
+                                    "id": identity,
+                                    "fields": sorted(
+                                        k
+                                        for k in set(row) | set(entities[identity])
+                                        if row.get(k) != entities[identity].get(k)
+                                    ),
+                                    "normalized_rule": "first observed version; raw versions preserved; capture partial",
+                                }
+                            )
+                        entities.setdefault(identity, row)
+                    if len(rows) != len(entities):
+                        manifest.setdefault("entity_duplicate_rows", []).append(
+                            {
+                                "path": path,
+                                "table": table,
+                                "removed": len(rows) - len(entities),
+                            }
+                        )
+                    rows = list(entities.values())
                 tables[table].extend(normalize(row, captured) for row in rows)
             outcome["status"] = "empty" if outcome["count"] == 0 else "complete"
             return data
@@ -269,9 +308,43 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                 "Current collector definitions do not establish historical collector settings."
             )
             window = {"from": selection.start, "to": selection.end} if selection.start else {}
-            sessions = acquire(
-                route("test-runs/{id}/user-sessions", id=result_id), "sessions", True, window
-            )
+            first_session = len(tables["sessions"])
+            sessions = []
+            # Union active-in-window with created-in-window: retain ongoing and failed logons.
+            for mode in ("loggedIn", "created") if window else ("created",):
+                sessions.extend(
+                    acquire(
+                        route("test-runs/{id}/user-sessions", id=result_id),
+                        "sessions",
+                        True,
+                        {**window, "filterType": mode},
+                    )
+                )
+            by_id: dict[str, dict[str, Any]] = {}
+            overlap = 0
+            for session in sessions:
+                identity = session["id"]
+                if identity in by_id:
+                    overlap += 1
+                    if session != by_id[identity]:
+                        manifest.setdefault("identity_conflicts", []).append(
+                            {
+                                "table": "sessions",
+                                "testRunId": result_id,
+                                "id": identity,
+                                "fields": sorted(
+                                    k
+                                    for k in set(session) | set(by_id[identity])
+                                    if session.get(k) != by_id[identity].get(k)
+                                ),
+                                "normalized_rule": "first observed version; raw versions preserved; capture partial",
+                            }
+                        )
+                else:
+                    by_id[identity] = session
+            sessions = list(by_id.values())
+            manifest.setdefault("session_query_overlap", {})[result_id] = overlap
+            tables["sessions"][first_session:] = [normalize(row, captured) for row in sessions]
             for session in sessions:
                 acquire(
                     route(
@@ -293,7 +366,10 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
             historical = run.get("testConfigurationSnapshot") or {}
             metric_settings = run if selection.test_type == "ContinuousTest" else historical
             metric_path = route("user-session-metrics/{id}", id=result_id)
-            if metric_settings.get("sessionMetricsEnabled") is False:
+            if (
+                selection.test_type != "ContinuousTest"
+                and metric_settings.get("sessionMetricsEnabled") is False
+            ):
                 manifest["endpoints"].append(
                     {
                         "path": metric_path,
@@ -308,7 +384,9 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                 )
             else:
                 first_metric = len(tables["session_metrics"])
-                acquire(metric_path, "session_metrics", True, window, True)
+                acquire(
+                    metric_path, "session_metrics", True, {**window, "orderBy": "timestamp"}, True
+                )
                 for row in tables["session_metrics"][first_metric:]:
                     row["_selected_result_id"] = result_id
                     if row.get("testRunId") is None:
@@ -323,10 +401,23 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                 )
         manifest["status"] = (
             "partial"
-            if any(e["status"] in ("failed", "partial") for e in manifest["endpoints"])
+            if manifest.get("identity_conflicts")
+            or any(e["status"] in ("failed", "partial") for e in manifest["endpoints"])
             else "complete"
         )
-    except (ToolkitError, KeyboardInterrupt, KeyError, TypeError, ValueError) as exc:
+        if manifest.get("identity_conflicts"):
+            manifest["error"] = "Source entity versions conflict; recapture a stable window."
+            manifest["warnings"].append(
+                "Entity versions conflict: normalized data uses the first observed version; raw versions remain preserved. Capture acceptance is partial."
+            )
+    except (
+        ToolkitError,
+        KeyboardInterrupt,
+        KeyError,
+        TypeError,
+        ValueError,
+        AttributeError,
+    ) as exc:
         manifest["status"] = (
             "partial"
             if any(e["status"] in ("complete", "empty", "partial") for e in manifest["endpoints"])
@@ -339,12 +430,14 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
             if isinstance(exc, KeyboardInterrupt)
             else "Malformed source response"
         )
+        manifest["redacted_fields_or_strings"] = client.redactions
         finalize(directory, manifest, tables)
         if isinstance(exc, KeyboardInterrupt):
             raise
         raise ToolkitError(
             "Capture incomplete. Inspect manifest endpoint outcomes; recapture to a new directory."
         ) from None
+    manifest["redacted_fields_or_strings"] = client.redactions
     finalize(directory, manifest, tables)
     if manifest["status"] != "complete":
         raise ToolkitError(
@@ -357,6 +450,13 @@ def verify_capture(directory: Path) -> dict[str, Any]:
     manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
     if manifest.get("schema_version") != "capture/1":
         raise ToolkitError("Unsupported capture contract.")
+    actual_files = {
+        p.relative_to(directory).as_posix()
+        for p in directory.rglob("*")
+        if p.is_file() and p != directory / "manifest.json"
+    }
+    if actual_files != set(manifest["files"]):
+        raise ToolkitError("Capture contains unlisted or missing files; evidence cannot be copied.")
     for name, digest in manifest["files"].items():
         path = (directory / name).resolve()
         if not path.is_relative_to(directory.resolve()) or not path.is_file():

@@ -10,5 +10,5 @@ $toolkitPython = Join-Path $toolkitRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $toolkitPython)) {
     throw 'Install the native Windows environment first: py -3 -m venv .venv'
 }
-& $toolkitPython -m le_results.cli @Arguments
+& $toolkitPython -I -m le_results.cli @Arguments
 exit $LASTEXITCODE

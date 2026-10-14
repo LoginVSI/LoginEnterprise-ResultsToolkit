@@ -12,7 +12,7 @@ Start with the [offline quickstart](docs/quickstart.md). It generates a clearly 
 
 Power BI has a local-file snapshot project and a refreshable project with independently authored Power Query acquisition. Both generate editable PBIP/PBIR reports and model.bim definitions. Actual capture reports pass the public schemas; **Desktop opening and refresh remain pending**. Generated files alone do not establish Desktop acceptance.
 
-The explicit API adapter targets `/publicApi/v8-preview`. There is no v7 fallback. Verified HTTPS and bounded read-only capture have been exercised on Login Enterprise 6.9.2. A timer-only comparison retains failed resource acquisition as partial evidence. Desktop 2.158.1304.0 is installed; execution acceptance remains pending. See the [capability matrix](docs/capabilities.md) and [progress/evidence](docs/progress.md).
+The explicit API adapter targets `/publicApi/v8-preview`. There is no v7 fallback. Verified HTTPS and bounded read-only capture have been exercised on Login Enterprise 6.9.2. Explicit resource sorting recovered endpoint requests; new captures are separate from the preserved earlier failures. Successful empty responses do not establish measured resource coverage. Desktop 2.158.1304.0 is installed; execution acceptance remains pending. See the [capability matrix](docs/capabilities.md) and [progress/evidence](docs/progress.md).
 
 ## Requirements
 

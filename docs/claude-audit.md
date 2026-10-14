@@ -1,8 +1,8 @@
 # Ready-to-run independent Claude Code audit
 
-This is a handoff, not an audit result. No independent Claude Code audit has run. The implementation agent's checks are not independent evidence.
+An independent Claude Code audit completed on 2026-10-13 against the public-only snapshot at `d5cb29f`. Claude independently ran 80 tests, lint and types, and recomputed the synthetic arithmetic. Its reproductions were code traces, with no appliance or Desktop access. The complete findings and runner outputs are retained privately; the [review dispositions](audit-2026-10-13.md) identify fixes, accepted limits and follow-up checks. Implementation-agent verification remains separate from that review.
 
-The 2026-10-13 attempt used inspected CLI flags, restricted read tools, an isolated public-only snapshot and exact offline-check permissions. It failed before inference because saved OAuth access had expired and could not refresh. No independent findings exist. Renew access interactively with `claude auth login`, then use the prepared local runner. Authentication-status metadata alone did not prove usable access. Keep private inputs excluded on rerun; never grant blanket shell access or bypass permission checks.
+The earlier attempt failed before inference because OAuth access had expired. After interactive renewal, the prepared restricted runner completed. It allowed Read/Glob/Grep and three exact offline-check commands, with no editing tools, MCP, appliance access or session persistence. An attempted broader shell inspection was denied. Preserve this boundary on subsequent review; never grant blanket shell access or bypass permission checks.
 
 Use this prompt from the checkout in a separate Claude Code session:
 

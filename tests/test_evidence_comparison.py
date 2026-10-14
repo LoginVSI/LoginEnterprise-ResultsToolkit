@@ -53,7 +53,7 @@ def test_independent_arithmetic_and_failure_reconciliation(pair):
 
 def test_unmatched_configured_metric_never_zero(pair):
     b, c, config = pair
-    config["metrics"][0]["match"] = {"measurementId": "configured-but-empty"}
+    config["metrics"][0]["match"] = {"measurementId": "configured-but-empty", "applicationId": APP}
     row = compare(b, c, config)["metrics"][0]
     assert row["baseline_mean"] is None and row["absolute_change"] is None
     assert row["baseline_samples"] == 0
@@ -89,6 +89,17 @@ def test_explicit_timer_only_policy_keeps_failed_resource_evidence(pair):
                 "count": 0,
                 "error": "HTTP 500",
             }
+        )
+        selected = manifest["selection"]["ids"][0]
+        manifest["endpoints"].extend(
+            {"path": "test-runs/" + selected + suffix, "status": "complete"}
+            for suffix in (
+                "",
+                "/user-sessions",
+                "/measurements",
+                "/events",
+                "/user-sessions/" + SESSION + "/app-executions",
+            )
         )
         finalize(directory, manifest, {k: load_table(directory, k) for k in TABLES})
     with pytest.raises(ToolkitError, match="complete captures"):

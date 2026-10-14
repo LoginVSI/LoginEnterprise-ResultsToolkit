@@ -41,11 +41,30 @@ def local_query(path: Path, columns: list[tuple[str, str]]) -> str:
 
 
 def build_report(
-    comparison: dict[str, Any], directory: Path, config: dict[str, Any] | None = None
+    comparison: dict[str, Any],
+    directory: Path,
+    config: dict[str, Any] | None = None,
+    *,
+    _internal: bool = False,
 ) -> None:
     capture_mode = comparison.get("schema_version") == "capture-report/1"
-    if comparison.get("schema_version") not in ("comparison-result/1", "capture-report/1"):
+    if comparison.get("schema_version") not in (
+        ("comparison-result/1", "capture-report/1", "live-placeholder/1")
+        if _internal
+        else ("comparison-result/1",)
+    ):
         raise ToolkitError("Expected a comparison-result/1 artifact.")
+    if comparison.get("schema_version") == "comparison-result/1":
+        from .compare import compare
+
+        paths = comparison.get("source_captures", [])
+        if len(paths) != 2 or not comparison.get("configuration"):
+            raise ToolkitError("Rebuild the comparison with its configuration before reporting.")
+        expected = compare(Path(paths[0]), Path(paths[1]), comparison["configuration"])
+        if comparison != expected:
+            raise ToolkitError(
+                "Comparison differs from its verified source/configuration; rebuild it."
+            )
     config = config or {
         "schema_version": "report/1",
         "title": "Login Enterprise result comparison",
@@ -184,7 +203,9 @@ def build_report(
                     for k, v in raw.items()
                 }
                 row["scenario"] = comparison[label]["label"]
-                row["run_key"] = str(raw.get("testRunId", raw.get("id") if name == "runs" else ""))
+                row["run_key"] = (
+                    label + "/" + str(raw.get("testRunId", raw.get("id") if name == "runs" else ""))
+                )
                 session = (
                     raw.get("id")
                     if name == "sessions"
@@ -195,6 +216,13 @@ def build_report(
     for name, rows in source_tables.items():
         if not source_paths:
             break
+        if name in ("runs", "sessions"):
+            key = "run_key" if name == "runs" else "session_key"
+            identities = [row[key] for row in rows]
+            if None in identities or len(identities) != len(set(identities)):
+                raise ToolkitError(
+                    "Source relationship keys are not unique; recapture stable identities."
+                )
         fields = sorted({k for row in rows for k in row}) or ["capture_id"]
         if name == "measurements":
             fields = sorted(
@@ -450,11 +478,15 @@ def build_report(
     warnings = "".join("<li>" + html.escape(w) + "</li>" for w in comparison["warnings"])
     bars = ""
     for i, row in enumerate(metrics):
-        if row["absolute_change"] is not None:
-            delta = row["relative_change_percent"]
-            if delta is not None:
-                width = min(abs(delta), 100) * 3
-                bars += f'<text x="0" y="{i * 40 + 20}" font-size="12">{html.escape(row["metric"])} ({delta:.2f}%)</text><rect x="300" y="{i * 40 + 5}" width="{width}" height="20" fill="#2563eb"/>'
+        delta = row["relative_change_percent"]
+        label = html.escape(row["metric_group"])
+        y = i * 48
+        if delta is None:
+            bars += f'<text x="0" y="{y + 16}">{label}: relative change unavailable (missing or zero baseline)</text>'
+        else:
+            width = min(abs(delta), 100) * 3
+            x = 350 - width if delta < 0 else 350
+            bars += f'<text x="0" y="{y + 16}">{label}: {delta:+.2f}%</text><line x1="350" y1="{y + 22}" x2="350" y2="{y + 44}" stroke="#172033"/><rect x="{x}" y="{y + 24}" width="{width}" height="18" fill="#2563eb"/>'
     content = (
         "<!doctype html><html lang='en'><meta charset='utf-8'><title>Result evidence</title>"
         "<style>body{font:16px system-ui;margin:32px;color:#172033}td,th{padding:10px;text-align:left;border-bottom:1px solid #ddd}table{border-collapse:collapse}li{margin:10px}svg{max-width:100%}</style>"
@@ -472,7 +504,7 @@ def build_report(
         "<table><tr><th>Metric/group</th><th>Unit</th><th>Baseline mean</th><th>Candidate mean</th><th>Absolute change</th><th>Relative %</th><th>Baseline n</th><th>Candidate n</th></tr>"
         + html_rows
         + "</table>"
-        f'<svg width="700" height="{max(40, len(metrics) * 40)}" aria-label="Relative change percent; bars clipped at 100 percent">'
+        f'<svg width="700" height="{max(48, len(metrics) * 48)}" aria-label="Signed relative change percent; negative left, positive right; bars clipped at 100 percent">'
         + bars
         + "</svg>"
         "<h2>Coverage</h2><pre>"
@@ -570,6 +602,7 @@ def build_capture_report(
             "title": title,
             "visuals": ["source_table", "coverage_table"],
         },
+        _internal=True,
     )
     (directory / "OPEN-IN-DESKTOP.txt").write_text(
         "Open Results.pbip in Power BI Desktop, refresh local files, select one unit, and reconcile "

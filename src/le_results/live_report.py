@@ -32,10 +32,24 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         raise ToolkitError("Scenario labels must differ.")
     if set(config["baseline"]["ids"]) & set(config["candidate"]["ids"]):
         raise ToolkitError("Baseline and candidate must use different IDs.")
+    if len(config["baseline"]["ids"]) + len(config["candidate"]["ids"]) > 4:
+        raise ToolkitError("The preview live connector permits at most four results per refresh.")
     metrics = config.get("metrics")
     if not isinstance(metrics, list) or not metrics:
         raise ToolkitError("Supply explicit metrics.")
     for metric in metrics:
+        if not isinstance(metric.get("name"), str) or not metric["name"].strip():
+            raise ToolkitError("Every metric requires a nonempty name.")
+        identities = (
+            ("applicationId", "measurementId")
+            if metric.get("table") == "measurements"
+            else ("displayName",)
+        )
+        for identity in identities:
+            if identity not in metric.get("match", {}) and identity not in metric.get(
+                "group_by", []
+            ):
+                raise ToolkitError(f"Metric identity requires {identity} in match or group_by.")
         if metric.get("table") not in ("measurements", "session_metrics") or not metric.get(
             "match"
         ):
@@ -74,7 +88,7 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
 
     reject_secrets(config)
     placeholder = {
-        "schema_version": "comparison-result/1",
+        "schema_version": "live-placeholder/1",
         "baseline": config["baseline"],
         "candidate": config["candidate"],
         "test_type": kind,
@@ -92,6 +106,7 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
             "title": config.get("title", "Refreshable results"),
             "visuals": [],
         },
+        _internal=True,
     )
     query = (
         "ResultsToolkit.Rows("
@@ -108,6 +123,9 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         "run_id",
         "session_id",
         "execution_id",
+        "deduplicated_rows",
+        "observation_present",
+        "availability",
         "metric_key",
         "metric_name",
         "unit",
@@ -179,10 +197,18 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         },
         {
             "name": "Failed Logons",
-            "expression": 'CALCULATE(COUNTROWS(Results), Results[row_kind] = "session", Results[state] = "failed")',
+            "expression": 'CALCULATE(COUNTROWS(Results), Results[row_kind] = "session", Results[state] IN {"failed", "aborted", "abandoned"})',
             "formatString": "0",
         },
     ]
+    for side, label in (("Baseline", base_label), ("Candidate", candidate_label)):
+        measures.append(
+            {
+                "name": side + " Missing",
+                "expression": f'CALCULATE(COUNTROWS(Results), Results[scenario] = {label}, {filter_kind}, Results[observation_present] = "true", ISBLANK(Results[value]))',
+                "formatString": "0",
+            }
+        )
     model = {
         "name": "ResultsToolkit",
         "compatibilityLevel": 1600,
@@ -244,7 +270,7 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
             "tableEx",
             {
                 "Values": {
-                    "projections": [field("metric_key"), field("unit")]
+                    "projections": [field("metric_key"), field("unit"), field("availability")]
                     + [
                         field(n, True)
                         for n in (
@@ -254,6 +280,8 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
                             "Relative Change Percent",
                             "Baseline Samples",
                             "Candidate Samples",
+                            "Baseline Missing",
+                            "Candidate Missing",
                         )
                     ]
                 }

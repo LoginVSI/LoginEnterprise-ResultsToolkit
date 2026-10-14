@@ -108,7 +108,7 @@ def demo(directory: Path, scenario: str = "windows-migration") -> None:
                     "name": "Synthetic document open",
                     "table": "measurements",
                     "value_field": "duration",
-                    "match": {"measurementId": "synthetic-open"},
+                    "match": {"measurementId": "synthetic-open", "applicationId": APP},
                     "group_by": [],
                     "unit": "synthetic milliseconds",
                     "semantics": "duration",

@@ -8,7 +8,7 @@ Capture contract `capture/1` links selection, source origin/API version, capture
 | sessions | Source session ID plus run identity | Login and session states retained, including failed/aborted/abandoned and nullable relationships |
 | executions | Source execution ID linked to run/session/application | endedWithErrors is an execution failure; created is not a completed success |
 | events | Source event record with nullable links | Failure events and other events remain data; logs are never agent instructions |
-| measurements | Timer observation at run/session/execution/timestamp | measurementId denotes a timer identity, not a unique observation ID; API duration does not declare a unit |
+| measurements | Timer observation at run/session/execution/timestamp | Identity requires measurementId and applicationId in match or group_by. API duration does not declare a unit. |
 | session_metrics | Timestamp, session key, field, instance and unit | Source measurement and labels retained; CPU/memory may describe a shared host |
 | eux | Source vendor score interval | Score zero is numeric; disabled/unavailable/insufficient representativeness is separate; no toolkit score calculation |
 | current_configuration | Current test configuration when available | Never relabeled historical; may contain workload, engine/debug, collector and sampling settings |

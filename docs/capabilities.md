@@ -6,11 +6,11 @@
 | Native encrypted vault | Yes | Windows metadata/persistence and rejection tests | Existing enrollment reused | Native Linux/macOS pending |
 | Diagnosis and profile trust | Yes | Real synthetic HTTPS handshakes | Strict TLS and system/version on 6.9.2 | Python trust is separate from Power Query |
 | Bounded recommendations | Yes | Contract/query/selection tests | Load/Application/Continuous subset and retained sessions | Canonical skill used in current Codex host |
-| Exports and hashed manifests | Yes | Paging, cancellation, failure, identity tests | Complete selected Load; partial pair/Application/Continuous preserved | N/A |
-| Explicit comparisons | Yes | Missing/zero, units, instances, failures | Timer-only partial-pair arithmetic independently reconciled | Desktop DAX pending |
+| Exports and hashed manifests | Yes | Paging, cancellation, failure, identity tests | New complete pair/Application/Continuous; earlier partial failures preserved | N/A |
+| Explicit comparisons | Yes | Missing/zero, units, instances, failures | Complete-pair timer arithmetic independently reconciled; resources successfully empty | Desktop DAX pending |
 | Finite HTML and editable snapshots | Yes | Schemas/source references, synthetic targets | Reports built from actual captures | Desktop open/refresh pending |
 | Refreshable Power BI adapter | Yes | Official schemas and Microsoft M parsing | Project selects verified IDs; endpoint defects retained | Connector loading, Key enrollment, two refreshes and Mashup/DAX checks pending |
-| Independent Claude review | Package available | Status recorded in progress | No appliance access in audit | Self-review is not independent evidence |
+| Independent Claude review | Completed public-only review | Claude ran tests/lint/types; findings and dispositions recorded | No appliance access in audit | Separate from host skill behavior and Desktop proof |
 | Service/gateway, streaming, incremental ingestion, InfluxDB/Grafana | Outside this preview | No claim | No | No |
 
 | Test model | Evidence | Limits |
@@ -20,7 +20,7 @@
 | Continuous | Test UUID with fixed/resolved window, current configuration and retained observations | Enabled configuration is distinct from healthy collection. Test IDs were verified on retained result paths; no invented discrete runs. |
 | Single-user Desktop Load | Same retrieval where enabled; guide documents one user/no login process | Capacity comparison is not meaningful. Special model rules are documented, not live-verified here. |
 
-One live resource endpoint returns HTTP 500. Those requests remain failed and captures stay partial. Default comparisons reject partial captures. Explicit `timer-only` policy permits complete timing/failure evidence when session-metric acquisition alone failed; it cannot support CPU/memory conclusions. Finite reports can display partial evidence directly. Retained observations are not independent devices.
+Minimal resource requests fail with HTTP 500 when optional sorting is omitted. Explicit `orderBy=timestamp` recovered requests on the observed appliance; Swagger definitions match the checked-in operation. Fresh captures contain successful empty resource envelopes. Earlier failed captures remain partial and immutable. Empty resources cannot support CPU/memory conclusions. Default comparisons reject partial captures; explicit `timer-only` policy permits only complete timing/failure evidence for every selected result when session-metric acquisition alone failed. Retained observations are not independent devices.
 
 The API does not declare every timer unit. Unknown units, historical collector settings and retention gaps remain labeled. SetTimer can represent resources or categorical sentinels; declared status values cannot be averaged. Native EUX/VSImax states and bounds remain vendor evidence without a toolkit scoring algorithm. Names do not establish OS identity, independence or causality.
 

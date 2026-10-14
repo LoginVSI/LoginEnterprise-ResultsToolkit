@@ -27,6 +27,9 @@ class Selection:
     scenario: dict[str, Any] | None = None
     schema_version: str = "selection/1"
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "ids", [identifier(value) for value in self.ids])
+
     def validate(self) -> "Selection":
         if self.schema_version != "selection/1" or self.test_type not in (
             "LoadTest",

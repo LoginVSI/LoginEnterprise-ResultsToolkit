@@ -1,0 +1,7 @@
+{
+  "name": "results-toolkit-m-validation",
+  "private": true,
+  "dependencies": {
+    "@microsoft/powerquery-parser": "2.0.0"
+  }
+}

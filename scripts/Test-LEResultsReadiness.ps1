@@ -31,7 +31,7 @@ if ($bootstrapOutput) { Write-Output $bootstrapOutput }
 else { Write-Output '{"ok":false,"code":"environment_broken","action":"The selected Python cannot start. Preserve the old .venv and recreate it with an explicit installed runtime, then install documented locks."}' }
 if ($bootstrapExit -ne 0) { exit 2 }
 if ($Profile) {
-    $engineArguments = @('-m', 'le_results.cli', 'doctor', '--profile', $Profile)
+    $engineArguments = @('-I', '-m', 'le_results.cli', 'doctor', '--profile', $Profile)
     if (-not $Live) { $engineArguments += '--offline' }
     if ($OutputDirectory) { $engineArguments += @('--out', $OutputDirectory) }
     & $Python @engineArguments

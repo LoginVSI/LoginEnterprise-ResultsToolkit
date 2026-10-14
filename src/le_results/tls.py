@@ -6,19 +6,21 @@ Exception text is deliberately never copied into an error or artifact.
 import errno
 import socket
 import ssl
-import sys
 from pathlib import Path
 
 import httpx
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
 
 from .errors import ToolkitError
 
 
-def context(ca_bundle: str | None = None) -> ssl.SSLContext:
-    # Mirror create_default_context without its SSLKEYLOGFILE side effect.
+def context(
+    ca_bundle: str | None = None, approved_sha256: tuple[str, ...] | None = None
+) -> ssl.SSLContext:
+    # One strict policy on every supported runtime, without SSLKEYLOGFILE side effects.
     result = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    if sys.version_info >= (3, 13):
-        result.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN | ssl.VERIFY_X509_STRICT
+    result.verify_flags |= ssl.VERIFY_X509_PARTIAL_CHAIN | ssl.VERIFY_X509_STRICT
     try:
         if ca_bundle:
             if not Path(ca_bundle).is_file():
@@ -30,10 +32,18 @@ def context(ca_bundle: str | None = None) -> ssl.SSLContext:
                     "CA bundle must contain only bounded public certificate material.",
                     code="trust_file_invalid",
                 )
-            result.load_verify_locations(cafile=ca_bundle)
+            certificates = x509.load_pem_x509_certificates(material)
+            actual = {c.fingerprint(hashes.SHA256()).hex().upper() for c in certificates}
+            if approved_sha256 is not None and (not actual or actual != set(approved_sha256)):
+                raise ToolkitError(
+                    "Trust material changed or lacks approval; independently approve it with trust.",
+                    code="trust_fingerprint_mismatch",
+                )
+            # Load the inspected bytes, so replacement between inspection and loading is harmless.
+            result.load_verify_locations(cadata=material.decode("ascii"))
         else:
             result.load_default_certs(ssl.Purpose.SERVER_AUTH)
-    except (OSError, ssl.SSLError):
+    except (OSError, ssl.SSLError, ValueError):
         raise ToolkitError(
             "Cannot load CA bundle; use readable PEM public certificates, without private keys.",
             code="trust_file_invalid",

@@ -1,7 +1,7 @@
 // Syntax validation with Microsoft's parser; this is not a Mashup runtime.
 const fs = require('node:fs');
 const path = require('node:path');
-const parserRoot = path.resolve(process.argv[2] || '.private/powerquery-validation');
+const parserRoot = path.resolve(process.argv[2] || 'scripts/powerquery-validation');
 const pq = require(path.join(parserRoot, 'node_modules/@microsoft/powerquery-parser'));
 const files = process.argv.slice(3);
 if (!files.length) files.push('adapters/powerbi/ResultsToolkit.pq');

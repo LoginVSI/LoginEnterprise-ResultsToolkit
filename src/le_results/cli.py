@@ -25,7 +25,6 @@ def parser() -> argparse.ArgumentParser:
     add.add_argument("name")
     add.add_argument("--url", required=True)
     add.add_argument("--api-version", choices=["v8-preview"], default="v8-preview")
-    add.add_argument("--ca-bundle")
     add.add_argument("--replace", action="store_true")
     ps.add_parser("list")
     auth = sub.add_parser("auth")
@@ -113,7 +112,7 @@ def run(args: argparse.Namespace) -> Any:
         if args.action == "list":
             return store.read()
         store.add(
-            Profile(args.name, canonical_origin(args.url), args.api_version, args.ca_bundle),
+            Profile(args.name, canonical_origin(args.url), args.api_version),
             args.replace,
         )
         return {"profile": args.name, "stored": True, "credential_enrolled": False}
