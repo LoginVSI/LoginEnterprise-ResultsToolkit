@@ -264,7 +264,7 @@ class Client:
             if on_page:
                 on_page(page, data)
             page_rows = {json.dumps(row, sort_keys=True, allow_nan=False) for row in items}
-            if seen_rows & page_rows:
+            if len(page_rows) != len(items) or seen_rows & page_rows:
                 raise ToolkitError(
                     "Overlapping paging rows; capture incomplete. Recapture a stable window.",
                     code="paging_overlap",

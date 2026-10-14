@@ -109,7 +109,12 @@ def test_explicit_timer_only_policy_keeps_failed_resource_evidence(pair):
     assert result["metrics"][0]["baseline_mean"] == 120
     assert result["coverage"][0]["completeness"] == "partial"
     assert any("TIMER-ONLY" in w for w in result["warnings"])
-    config["metrics"][0]["table"] = "session_metrics"
+    config["metrics"][0].update(
+        table="session_metrics",
+        value_field="measurement",
+        match={"displayName": "CPU"},
+        group_by=["instance", "fieldName", "unit"],
+    )
     with pytest.raises(ToolkitError, match="complete captures"):
         compare(b, c, config)
 

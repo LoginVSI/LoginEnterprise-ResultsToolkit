@@ -6,6 +6,7 @@ from typing import Any
 
 from .errors import ToolkitError
 from .evidence import write_json
+from .metrics import validate_metrics
 from .profiles import canonical_origin
 from .report import SCHEMA, build_report, m_string
 from .selection import Selection, rolling
@@ -34,9 +35,7 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         raise ToolkitError("Baseline and candidate must use different IDs.")
     if len(config["baseline"]["ids"]) + len(config["candidate"]["ids"]) > 4:
         raise ToolkitError("The preview live connector permits at most four results per refresh.")
-    metrics = config.get("metrics")
-    if not isinstance(metrics, list) or not metrics:
-        raise ToolkitError("Supply explicit metrics.")
+    metrics = validate_metrics(config.get("metrics"))
     for metric in metrics:
         if not isinstance(metric.get("name"), str) or not metric["name"].strip():
             raise ToolkitError("Every metric requires a nonempty name.")

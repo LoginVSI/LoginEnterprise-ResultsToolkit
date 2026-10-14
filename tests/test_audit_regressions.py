@@ -76,7 +76,17 @@ def test_timer_only_rejects_aborted_multi_result_capture(tmp_path):
         "coverage_policy": "timer-only",
         "baseline": {"label": "Before", "ids": [BASE, CANDIDATE]},
         "candidate": {"label": "After", "ids": [BASE, CANDIDATE]},
-        "metrics": [{"table": "measurements"}],
+        "metrics": [
+            {
+                "name": "Timer",
+                "table": "measurements",
+                "value_field": "duration",
+                "unit": "unconfirmed",
+                "semantics": "duration",
+                "direction": "lower",
+                "match": {"applicationId": None, "measurementId": "timer"},
+            }
+        ],
     }
     with pytest.raises(ToolkitError, match="complete captures"):
         compare(path, path, config)
@@ -360,3 +370,59 @@ def test_changing_execution_identity_is_not_two_completed_units(tmp_path):
     assert manifest["status"] == "partial"
     assert manifest["identity_conflicts"][0]["table"] == "executions"
     assert len(load_table(tmp_path, "executions")) == 1
+
+
+@pytest.mark.parametrize(
+    "change", ["duplicate-name", "string-group", "list-match", "bad-exclusions"]
+)
+def test_metric_configuration_cannot_pool_identity_at_presentation(tmp_path, change):
+    from copy import deepcopy
+
+    from le_results.live_report import build_live_report
+
+    demo(tmp_path / "source")
+    config = json.loads((tmp_path / "source/compare.json").read_text())
+    metric = config["metrics"][0]
+    if change == "duplicate-name":
+        other = deepcopy(metric)
+        other["name"] = " " + metric["name"].upper() + " "
+        other["match"]["measurementId"] = "different-timer"
+        config["metrics"].append(other)
+    elif change == "string-group":
+        metric["group_by"] = "measurementId"
+        del metric["match"]["measurementId"]
+    elif change == "list-match":
+        metric["match"] = ["measurementId"]
+    else:
+        metric["exclude_values"] = "-1"
+    with pytest.raises(ToolkitError):
+        compare(tmp_path / "source/baseline", tmp_path / "source/candidate", config)
+    live = {
+        **config,
+        "schema_version": "live-report/1",
+        "origin": "https://appliance.example.com",
+        "test_type": "LoadTest",
+    }
+    with pytest.raises(ToolkitError):
+        build_live_report(live, tmp_path / "live")
+    assert not (tmp_path / "live").exists()
+
+
+def test_null_source_result_id_retained_and_explicitly_derived(tmp_path):
+    def respond(req):
+        response = mock_capture(req)
+        if req.url.path.endswith("measurements"):
+            data = response.json()
+            data["items"][0]["testRunId"] = None
+            return httpx.Response(200, json=data)
+        return response
+
+    with Client(
+        Profile("test", "https://appliance.example.com"),
+        "fake",
+        transport=httpx.MockTransport(respond),
+    ) as client:
+        capture(client, Selection("ApplicationTest", [BASE]), tmp_path)
+    row = load_table(tmp_path, "measurements")[0]
+    assert row["testRunId"] == BASE and row["_testRunId_from_endpoint"] is True
+    assert any('"testRunId": null' in p.read_text() for p in (tmp_path / "raw").glob("*.json"))

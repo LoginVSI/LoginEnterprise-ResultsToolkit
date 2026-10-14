@@ -228,7 +228,23 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                             }
                         )
                     rows = list(entities.values())
-                tables[table].extend(normalize(row, captured) for row in rows)
+                for row in rows:
+                    normalized = normalize(row, captured)
+                    if (
+                        table
+                        in (
+                            "sessions",
+                            "executions",
+                            "measurements",
+                            "events",
+                            "session_metrics",
+                            "eux",
+                        )
+                        and row.get("testRunId") is None
+                    ):
+                        normalized["testRunId"] = result_id
+                        normalized["_testRunId_from_endpoint"] = True
+                    tables[table].append(normalized)
             outcome["status"] = "empty" if outcome["count"] == 0 else "complete"
             return data
         except ToolkitError as exc:
@@ -312,14 +328,18 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
             sessions = []
             # Union active-in-window with created-in-window: retain ongoing and failed logons.
             for mode in ("loggedIn", "created") if window else ("created",):
-                sessions.extend(
-                    acquire(
-                        route("test-runs/{id}/user-sessions", id=result_id),
-                        "sessions",
-                        True,
-                        {**window, "filterType": mode},
-                    )
+                batch = acquire(
+                    route("test-runs/{id}/user-sessions", id=result_id),
+                    "sessions",
+                    True,
+                    {**window, "filterType": mode},
                 )
+                # Entity normalization already records any within-call conflicts.
+                seen_batch: set[str] = set()
+                for row in batch:
+                    if row["id"] not in seen_batch:
+                        sessions.append(row)
+                        seen_batch.add(row["id"])
             by_id: dict[str, dict[str, Any]] = {}
             overlap = 0
             for session in sessions:
@@ -344,7 +364,14 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                     by_id[identity] = session
             sessions = list(by_id.values())
             manifest.setdefault("session_query_overlap", {})[result_id] = overlap
-            tables["sessions"][first_session:] = [normalize(row, captured) for row in sessions]
+            merged_sessions = []
+            for row in sessions:
+                normalized = normalize(row, captured)
+                if row.get("testRunId") is None:
+                    normalized["testRunId"] = result_id
+                    normalized["_testRunId_from_endpoint"] = True
+                merged_sessions.append(normalized)
+            tables["sessions"][first_session:] = merged_sessions
             for session in sessions:
                 acquire(
                     route(

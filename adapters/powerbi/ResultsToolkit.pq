@@ -130,6 +130,10 @@ EntityRows = (rows as list) as list =>
     let byId = List.Distinct(rows,each [id])
     in if List.Count(List.Distinct(rows)) <> List.Count(byId) then error Error.Record("Identity", "Entity versions changed; recapture a stable window.", null) else byId;
 
+IdentityRows = (rows as list, id as text) as list =>
+    if List.AnyTrue(List.Transform(rows, (r) => Record.FieldOrDefault(r,"testRunId",null) <> null and Record.Field(r,"testRunId") <> id))
+    then error Error.Record("Identity", "Source result identity differs from selection.", null) else rows;
+
 Fetch = (origin as text, kind as text, scenario as text, runId as text, window as record, metrics as list, deadline as datetimezone) as list =>
     let id = Id(runId), prefix = "test-runs/" & id & "/",
         run = if kind="ContinuousTest" then Get(origin,"tests/" & id,[include="all"],0,deadline)
@@ -151,7 +155,8 @@ Fetch = (origin as text, kind as text, scenario as text, runId as text, window a
             in List.Transform(if List.IsEmpty(matched) then {[availability=if m[table]="session_metrics" and disabled then "disabled" else "configured-but-no-measurements",state="unavailable"]} else matched,(r) => if m[table]="session_metrics" and Record.FieldOrDefault(r,"availability",null)=null and Record.FieldOrDefault(r,"unit",null) <> m[unit]
                 then error Error.Record("Unit","Source unit differs from configured unit.",null)
                 else Row(if m[table]="measurements" then "measurement" else "session_metric",scenario,id,r,window,m)))),
-        rows = List.Combine({{Row("run",scenario,id,checkedRun,window)},
+        checkedSources = List.Count(IdentityRows(List.Combine({sessions,executions,measurements,sessionMetrics,events}),id)),
+        rows = if checkedSources < 0 then {} else List.Combine({{Row("run",scenario,id,checkedRun,window)},
             List.Transform(sessions,each Row("session",scenario,id,_,window)),
             List.Transform(executions,each Row("execution",scenario,id,_,window)),
             List.Transform(events,each Row("event",scenario,id,_,window)), metricRows})
@@ -169,7 +174,8 @@ RowsImpl = (origin as text, configuration as text) as table =>
         records = List.Combine(List.Transform(sides,(s) => List.Combine(List.Transform(s[ids],(id) => Fetch(host,config[test_type],s[label],id,window,config[metrics],deadline))))),
         version = Get(host,"system/version",[],0,deadline),
         raw = Table.Buffer(Table.FromRecords(List.Combine({{Row("metadata","Appliance","",version,window)},records}),EmptyRows,MissingField.UseNull)),
-        result = Table.Distinct(raw),
+        errorCheck = Table.RowCount(Table.SelectRowsWithErrors(raw)),
+        result = if errorCheck > 0 then error Error.Record("Contract", "Acquisition contains invalid cells; refresh refused.", null) else Table.Distinct(raw),
         captured = Table.AddColumn(result,"captured_at",each DateTimeZone.ToText(end,"yyyy-MM-ddTHH:mm:ss.fffZ"),type text),
         dedup = Table.AddColumn(captured,"deduplicated_rows",each Text.From(Table.RowCount(raw)-Table.RowCount(result)),type text),
         complete = Table.AddColumn(dedup,"capture_status",each "complete selected endpoint acquisition",type text)

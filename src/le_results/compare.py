@@ -7,6 +7,7 @@ from typing import Any
 
 from .errors import ToolkitError
 from .evidence import load_table, verify_capture
+from .metrics import validate_metrics
 
 
 def numeric(value: Any) -> bool:
@@ -17,6 +18,7 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
     bm, cm = verify_capture(baseline), verify_capture(candidate)
     if config.get("schema_version") != "comparison/1":
         raise ToolkitError("Expected comparison/1 configuration.")
+    metrics = validate_metrics(config.get("metrics"))
     if bm["selection"]["test_type"] != cm["selection"]["test_type"]:
         raise ToolkitError("Cannot compare different test models.")
     policy = config.get("coverage_policy", "complete")
@@ -32,7 +34,7 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
             or not failures
             or any(m["status"] not in ("complete", "partial") for m in (bm, cm))
             or any(not e["path"].startswith("user-session-metrics/") for e in failures)
-            or any(metric.get("table") != "measurements" for metric in config.get("metrics", []))
+            or any(metric.get("table") != "measurements" for metric in metrics)
         ):
             raise ToolkitError(
                 "Comparison requires complete captures; explicit timer-only policy permits only failed session-metric endpoints with complete timing and failure evidence."
@@ -99,9 +101,6 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
         warnings.append(
             "Desktop Load: no login process and no meaningful capacity/VSImax comparison."
         )
-    metrics = config.get("metrics")
-    if not isinstance(metrics, list) or not metrics:
-        raise ToolkitError("Configure at least one explicitly defined metric.")
     results = []
     for metric in metrics:
         table = metric.get("table")
