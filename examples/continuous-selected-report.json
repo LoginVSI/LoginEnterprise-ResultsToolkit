@@ -1,0 +1,9 @@
+{
+  "schema_version": "live-selection/1",
+  "title": "Selected Continuous observations",
+  "origin": "https://appliance.example.com",
+  "test_type": "ContinuousTest",
+  "rolling_hours": 0.025,
+  "selected": {"label": "Selected Continuous test", "ids": ["11111111-1111-4111-8111-111111111111"]},
+  "metrics": [{"name": "Selected CPU observation", "table": "session_metrics", "value_field": "measurement", "match": {"displayName": "CPU", "unit": "%"}, "group_by": ["instance", "fieldName", "unit"], "unit": "%", "semantics": "resource", "direction": "neutral"}]
+}

@@ -1,0 +1,5 @@
+{
+  "name": "le-results",
+  "version": "0.1.0",
+  "description": "Portable Results Toolkit workflows using the deterministic CLI. No MCP servers or hooks."
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "file": "openapi-v8-preview.json",
+    "info_version": "8.0-preview",
+    "original_sha256": "efc15799b4a775dbad086733bb3def0752364f0fede35ca47637563600a852b5",
+    "sanitized_sha256": "d701a0df93ccf16ae9ceeeb3da3dff6da274b25937c1ee6711e7e67650708f8f",
+    "source": "Owner-supplied OpenAPI export, September 2026 inputs",
+    "sanitization": "Removed examples/contact; replaced absolute URLs in all strings"
+  },
+  {
+    "file": "openapi-v7.json",
+    "info_version": "7.0",
+    "original_sha256": "e20ce455eb026d745518013ac9e957be1adb1a8616edacf2461fbf5783b1ff12",
+    "sanitized_sha256": "2b0642d04f9f21c50ee00ff91781308a24bbed754b7faca9faa703b43dcb34cf",
+    "source": "Owner-supplied OpenAPI export, September 2026 inputs",
+    "sanitization": "Removed examples/contact; replaced absolute URLs in all strings"
+  }
+]
