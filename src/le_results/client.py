@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 
-from .contracts import API_ROOT, allowed_path
+from .contracts import API_ROOT, allowed_path, route
 from .errors import ToolkitError
 from .profiles import Profile, canonical_origin
 from .tls import context, transport_error
@@ -98,6 +98,31 @@ class Client:
         """Read only the appliance's explicit v8-preview Swagger through normal security."""
         return self._request(API_ROOT + "/openapi.json", None)
 
+    def get_application_pdf(self, run_id: str, max_bytes: int = 16 * 1024 * 1024) -> bytes:
+        """Download the documented Application GET report, without creating a report job."""
+        if type(max_bytes) is not int or not 1 <= max_bytes <= 64 * 1024 * 1024:
+            raise ToolkitError("PDF byte bound must be 1-67108864.")
+        run = self.get(route("test-runs/{id}", id=run_id))
+        if (
+            not isinstance(run, dict)
+            or run.get("id") != run_id
+            or run.get("type") != "ApplicationTest"
+            or not run.get("finished")
+        ):
+            raise ToolkitError("Native PDF retrieval requires a completed Application result.")
+        data = self._request(
+            API_ROOT + "/" + route("test-runs/{id}/reports/pdf", id=run_id),
+            None,
+            binary_max_bytes=max_bytes,
+        )
+        if not isinstance(data, bytes) or not data.startswith(b"%PDF-"):
+            raise ToolkitError("Native report did not return a PDF.", code="api_contract")
+        if self._token.encode() in data:
+            raise ToolkitError(
+                "Credential reflection rejected in native report.", code="credential_reflection"
+            )
+        return data
+
     def get_documentation(self, path: str) -> str:
         if path not in (
             "swagger/index.html",
@@ -108,7 +133,12 @@ class Client:
         return str(self._request("/publicApi/" + path, None, json_response=False))
 
     def _request(
-        self, relative_path: str, params: dict[str, Any] | None, *, json_response: bool = True
+        self,
+        relative_path: str,
+        params: dict[str, Any] | None,
+        *,
+        json_response: bool = True,
+        binary_max_bytes: int | None = None,
     ) -> Any:
         for attempt in range(self.retries + 1):
             if self.request_count >= self.max_requests:
@@ -116,14 +146,43 @@ class Client:
                     "Request bound exceeded; narrow the selection.", code="request_bound"
                 )
             if time.monotonic() >= self.deadline:
-                raise ToolkitError("Capture deadline exceeded; narrow the selection.")
+                raise ToolkitError(
+                    "Capture deadline exceeded; narrow the selection.", code="deadline"
+                )
             try:
                 self.request_count += 1
-                response = self.http.get(
-                    self.origin + relative_path,
-                    params=params,
-                    timeout=min(self.timeout, self.deadline - time.monotonic()),
-                )
+                request_timeout = min(self.timeout, self.deadline - time.monotonic())
+                if binary_max_bytes is None:
+                    response = self.http.get(
+                        self.origin + relative_path, params=params, timeout=request_timeout
+                    )
+                else:
+                    with self.http.stream(
+                        "GET", self.origin + relative_path, params=params, timeout=request_timeout
+                    ) as stream:
+                        content = bytearray()
+                        if stream.status_code == 200:
+                            for chunk in stream.iter_bytes(chunk_size=65536):
+                                if len(content) + len(chunk) > binary_max_bytes:
+                                    raise ToolkitError(
+                                        "Native PDF exceeds the configured byte bound.",
+                                        code="response_bound",
+                                    )
+                                if time.monotonic() >= self.deadline:
+                                    raise ToolkitError(
+                                        "Download deadline exceeded.", code="deadline"
+                                    )
+                                content.extend(chunk)
+                        response = httpx.Response(
+                            stream.status_code,
+                            headers={"Retry-After": stream.headers.get("Retry-After", "")},
+                            content=bytes(content),
+                            request=stream.request,
+                        )
+            except httpx.DecodingError:
+                raise ToolkitError(
+                    "Endpoint response encoding is invalid.", code="response_encoding"
+                ) from None
             except httpx.TransportError as exc:
                 diagnostic = transport_error(exc)
                 if attempt == self.retries or diagnostic.code.startswith("certificate_"):
@@ -169,6 +228,8 @@ class Client:
                     status,
                     code="api_route_missing" if status == 404 else "http_failed",
                 )
+            if binary_max_bytes is not None:
+                return response.content
             if not json_response:
                 return self._redact(response.text)
             try:
@@ -181,6 +242,8 @@ class Client:
         raise ToolkitError("Request retries exhausted.")
 
     def _redact(self, value: Any) -> Any:
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ToolkitError("Endpoint returned a non-finite JSON number.", code="source_schema")
         if isinstance(value, dict):
             self.redactions += sum(
                 any(

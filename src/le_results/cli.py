@@ -61,6 +61,7 @@ def parser() -> argparse.ArgumentParser:
     recommendations.add_argument("--profile", required=True)
     recommendations.add_argument("--limit", type=int, default=20)
     recommendations.add_argument("--candidates", type=int, default=5)
+    recommendations.add_argument("--continuous-candidates", type=int, default=5)
     recommendations.add_argument("--out", type=Path, required=True)
     select = sub.add_parser("select")
     select.add_argument(
@@ -103,6 +104,19 @@ def parser() -> argparse.ArgumentParser:
     live_report = sub.add_parser("report-live")
     live_report.add_argument("--config", type=Path, required=True)
     live_report.add_argument("--out", type=Path, required=True)
+    native_pdf = sub.add_parser(
+        "download-pdf", help="Read an existing completed Application report"
+    )
+    native_pdf.add_argument("--profile", required=True)
+    native_pdf.add_argument("--application-run-id", required=True)
+    native_pdf.add_argument("--out", type=Path, required=True)
+    native_pdf.add_argument("--max-mib", type=int, default=16)
+    lp = sub.add_parser(
+        "export-line-protocol", help="Optional finite dry-run file export; no database writes"
+    )
+    lp.add_argument("--capture", type=Path, required=True)
+    lp.add_argument("--out", type=Path, required=True)
+    lp.add_argument("--max-records", type=int, default=10000)
     return root
 
 
@@ -202,17 +216,21 @@ def run(args: argparse.Namespace) -> Any:
         with Client(
             profile,
             resolve_token(profile),
-            max_requests=60,
+            max_requests=250,
             max_pages=5,
             page_size=100,
             retries=0,
-            deadline_seconds=180,
+            deadline_seconds=300,
         ) as client:
-            result = recommend(client, args.limit, args.candidates)
+            result = recommend(client, args.limit, args.candidates, args.continuous_candidates)
         write_json(args.out, result)
         return {
             "out": str(args.out),
             "requests_used": result["requests_used"],
+            "ok": result["status"] != "partial",
+            "status": result["status"],
+            "failed_probes": result["failed_probes"],
+            "bounds_exhausted": result["bounds_exhausted"],
             "models": {
                 k: {"selection": v["selection"], "reason": v["reason"]}
                 for k, v in result["models"].items()
@@ -280,6 +298,41 @@ def run(args: argparse.Namespace) -> Any:
             "acquisition": "Power Query native Key credential",
             "Desktop_validation": "pending",
         }
+    if args.command == "download-pdf":
+        import hashlib
+
+        from .contracts import identifier
+
+        if args.out.exists():
+            raise ToolkitError("PDF destination must be new; preserve prior evidence.")
+        if not 1 <= args.max_mib <= 64:
+            raise ToolkitError("PDF maximum must be 1-64 MiB.")
+        profile = store.get(args.profile)
+        with Client(
+            profile, resolve_token(profile), max_requests=4, retries=0, deadline_seconds=90
+        ) as client:
+            data = client.get_application_pdf(
+                identifier(args.application_run_id), args.max_mib * 1024 * 1024
+            )
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with args.out.open("xb") as stream:
+                stream.write(data)
+        except OSError:
+            raise ToolkitError(
+                "Native PDF write failed; the new destination may be partial. Preserve it and retry a new path.",
+                code="output_write",
+            ) from None
+        return {
+            "out": str(args.out),
+            "bytes": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "scope": "native Application GET report; no report job created",
+        }
+    if args.command == "export-line-protocol":
+        from .timeseries import export_line_protocol
+
+        return export_line_protocol(args.capture, args.out, args.max_records)
     raise ToolkitError("Unknown command.")
 
 

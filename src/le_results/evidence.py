@@ -63,8 +63,10 @@ def finalize(
 ) -> None:
     manifest["table_counts"] = {}
     manifest["deduplicated_rows"] = {}
+    normalized_tables = {}
     for table in TABLES:
         rows = unique(tables.get(table, []))
+        normalized_tables[table] = rows
         removed = len(tables.get(table, [])) - len(rows)
         manifest["deduplicated_rows"][table] = removed
         if removed:
@@ -86,6 +88,34 @@ def finalize(
                         for k, v in row.items()
                     }
                 )
+    executions = {(row.get("testRunId"), row.get("id")) for row in normalized_tables["executions"]}
+    timers = normalized_tables["measurements"]
+    unresolved = [
+        row
+        for row in timers
+        if row.get("appExecutionId") is not None
+        and (
+            not isinstance(row["appExecutionId"], str)
+            or (row.get("testRunId"), row["appExecutionId"]) not in executions
+        )
+    ]
+    nullable = sum(row.get("appExecutionId") is None for row in timers)
+    manifest["relationship_coverage"] = {
+        "timer_execution_links": {
+            "resolved": len(timers) - nullable - len(unresolved),
+            "nullable": nullable,
+            "unresolved": len(unresolved),
+            "unresolved_ids": sorted({str(row["appExecutionId"]) for row in unresolved}),
+        },
+        "status": "unresolved references"
+        if unresolved
+        else "non-null timer execution references resolved",
+        "scope": "Captured result/execution identities only; acquisition completeness is separate from relationship coverage.",
+    }
+    if unresolved:
+        manifest["warnings"].append(
+            "Timer execution references are absent from the captured execution subset; inspect endpoint windows and retained source context. Acquisition completeness does not establish complete relationship coverage."
+        )
     write_json(
         directory / "data-dictionary.json",
         {

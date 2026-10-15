@@ -12,6 +12,21 @@ from .evidence import TABLES, load_table, verify_capture, write_json
 SCHEMA = "https://developer.microsoft.com/json-schemas/fabric/item/"
 
 
+def validate_numeric_rows(rows: list[dict[str, Any]]) -> None:
+    fields = {key for row in rows for key, value in row.items() if type(value) in (int, float)}
+    for field in fields:
+        if any(row.get(field) is not None and type(row[field]) not in (int, float) for row in rows):
+            raise ToolkitError(
+                "Source column contains mixed numeric and text values; inspect retained capture before reporting.",
+                code="source_type",
+            )
+        if any(type(row.get(field)) is int and abs(row[field]) > 2**53 for row in rows):
+            raise ToolkitError(
+                "Source integer cannot be represented exactly in the numeric report column.",
+                code="source_type",
+            )
+
+
 def m_string(value: str) -> str:
     return (
         '"'
@@ -78,6 +93,7 @@ def build_report(
         "unit_filter",
         "coverage_table",
         "source_table",
+        "resource_table",
     }
     if set(config.get("visuals", [])) - supported:
         raise ToolkitError(
@@ -85,6 +101,14 @@ def build_report(
         )
     if directory.exists() and any(directory.iterdir()):
         raise ToolkitError("Report destination must be empty.")
+    preflight_tables: dict[str, list[dict[str, Any]]] = {name: [] for name in TABLES}
+    for path in comparison.get("source_captures", []):
+        source = Path(path)
+        verify_capture(source)
+        for name in TABLES:
+            preflight_tables[name].extend(load_table(source, name))
+    for rows in preflight_tables.values():
+        validate_numeric_rows(rows)
     directory.mkdir(parents=True, exist_ok=True)
     metrics = [
         {
@@ -228,10 +252,24 @@ def build_report(
             fields = sorted(
                 set(fields) | {"measurementId", "duration", "timestamp", "userSessionId"}
             )
+        if name == "session_metrics":
+            fields = sorted(
+                set(fields)
+                | {
+                    "displayName",
+                    "fieldName",
+                    "measurement",
+                    "unit",
+                    "instance",
+                    "timestamp",
+                    "userSessionKey",
+                }
+            )
         columns = [
             (field, "double" if any(type(r.get(field)) in (float, int) for r in rows) else "string")
             for field in fields
         ]
+        validate_numeric_rows(rows)
         model_name = "Source_" + name
         write_json(directory / "data" / f"{model_name}.json", rows)
         query = local_query(directory / "data" / f"{model_name}.json", columns)
@@ -379,26 +417,47 @@ def build_report(
                 },
             }
             position = {"x": 0, "y": 0, "width": 280, "height": 100}
-        elif name == "source_table":
+        elif name in ("source_table", "resource_table"):
+            resource = name == "resource_table"
             visual = {
                 "visualType": "tableEx",
                 "query": {
                     "queryState": {
                         "Values": {
                             "projections": [
-                                column("Source_measurements", field)
+                                column(
+                                    "Source_session_metrics" if resource else "Source_measurements",
+                                    field,
+                                )
                                 for field in (
-                                    "measurementId",
-                                    "duration",
-                                    "timestamp",
-                                    "userSessionId",
+                                    (
+                                        "displayName",
+                                        "fieldName",
+                                        "measurement",
+                                        "unit",
+                                        "instance",
+                                        "timestamp",
+                                        "userSessionKey",
+                                    )
+                                    if resource
+                                    else (
+                                        "measurementId",
+                                        "duration",
+                                        "timestamp",
+                                        "userSessionId",
+                                    )
                                 )
                             ]
                         }
                     }
                 },
             }
-            position = {"x": 0, "y": 110, "width": 1100, "height": 280}
+            position = {
+                "x": 0,
+                "y": 110 if not resource else 450,
+                "width": 1100 if not resource else 700,
+                "height": 280,
+            }
         elif name == "change_chart":
             visual = {
                 "visualType": "clusteredBarChart",
@@ -487,6 +546,18 @@ def build_report(
             width = min(abs(delta), 100) * 3
             x = 350 - width if delta < 0 else 350
             bars += f'<text x="0" y="{y + 16}">{label}: {delta:+.2f}%</text><line x1="350" y1="{y + 22}" x2="350" y2="{y + 44}" stroke="#172033"/><rect x="{x}" y="{y + 24}" width="{width}" height="18" fill="#2563eb"/>'
+    comparison_section = (
+        ""
+        if capture_mode
+        else (
+            "<table><tr><th>Metric/group</th><th>Unit</th><th>Baseline mean</th><th>Candidate mean</th><th>Absolute change</th><th>Relative %</th><th>Baseline n</th><th>Candidate n</th></tr>"
+            + html_rows
+            + "</table>"
+            + f'<svg width="700" height="{max(48, len(metrics) * 48)}" aria-label="Signed relative change percent; negative left, positive right; bars clipped at 100 percent">'
+            + bars
+            + "</svg>"
+        )
+    )
     content = (
         "<!doctype html><html lang='en'><meta charset='utf-8'><title>Result evidence</title>"
         "<style>body{font:16px system-ui;margin:32px;color:#172033}td,th{padding:10px;text-align:left;border-bottom:1px solid #ddd}table{border-collapse:collapse}li{margin:10px}svg{max-width:100%}</style>"
@@ -501,13 +572,8 @@ def build_report(
             + html.escape(comparison["candidate"]["label"])
         )
         + "</p>"
-        "<table><tr><th>Metric/group</th><th>Unit</th><th>Baseline mean</th><th>Candidate mean</th><th>Absolute change</th><th>Relative %</th><th>Baseline n</th><th>Candidate n</th></tr>"
-        + html_rows
-        + "</table>"
-        f'<svg width="700" height="{max(48, len(metrics) * 48)}" aria-label="Signed relative change percent; negative left, positive right; bars clipped at 100 percent">'
-        + bars
-        + "</svg>"
-        "<h2>Coverage</h2><pre>"
+        + comparison_section
+        + "<h2>Coverage</h2><pre>"
         + html.escape(json.dumps(comparison["coverage"], indent=2))
         + "</pre><h2>Evidence limits</h2><ul>"
         + warnings
@@ -535,6 +601,42 @@ def build_report(
                 )
                 + "</tr>"
                 for row in source_rows[:500]
+            )
+            + "</table>"
+        )
+        details += (
+            "<h2>Retained resource observations</h2><p>Source units, field and instance identities are retained. Up to 500 rows are shown; complete datasets remain in the bundle. No cross-unit average is calculated.</p><table><tr>"
+            + "".join(
+                "<th>" + field + "</th>"
+                for field in (
+                    "displayName",
+                    "fieldName",
+                    "measurement",
+                    "unit",
+                    "instance",
+                    "timestamp",
+                    "userSessionKey",
+                )
+            )
+            + "</tr>"
+            + "".join(
+                "<tr>"
+                + "".join(
+                    "<td>"
+                    + html.escape("unavailable" if row.get(field) is None else str(row[field]))
+                    + "</td>"
+                    for field in (
+                        "displayName",
+                        "fieldName",
+                        "measurement",
+                        "unit",
+                        "instance",
+                        "timestamp",
+                        "userSessionKey",
+                    )
+                )
+                + "</tr>"
+                for row in source_tables["session_metrics"][:500]
             )
             + "</table>"
         )
@@ -600,7 +702,7 @@ def build_capture_report(
         {
             "schema_version": "report/1",
             "title": title,
-            "visuals": ["source_table", "coverage_table"],
+            "visuals": ["source_table", "resource_table", "coverage_table"],
         },
         _internal=True,
     )

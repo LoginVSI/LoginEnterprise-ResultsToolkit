@@ -23,10 +23,13 @@ SINGLE = {
     "tests/{id}",
     "test-runs/{id}/eux-results",
     "test-runs/{id}/statistics",
+    "test-runs/{id}/reports/pdf",
 }
 
 
-def identifier(value: str) -> str:
+def identifier(value: object) -> str:
+    if not isinstance(value, str):
+        raise ToolkitError("Expected an explicit UUID identifier.")
     try:
         return str(UUID(value))
     except ValueError:

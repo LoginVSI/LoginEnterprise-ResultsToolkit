@@ -164,12 +164,15 @@ Fetch = (origin as text, kind as text, scenario as text, runId as text, window a
 
 RowsImpl = (origin as text, configuration as text) as table =>
     let host = Origin(origin), rawConfig = Json.Document(configuration),
-        config = if Record.FieldOrDefault(rawConfig,"schema_version",null) <> "acquisition/1" or not List.Contains({"LoadTest","ApplicationTest","ContinuousTest"},rawConfig[test_type])
-                 or List.Count(rawConfig[baseline][ids]) < 1 or List.Count(rawConfig[candidate][ids]) < 1 or List.Count(rawConfig[baseline][ids])+List.Count(rawConfig[candidate][ids]) > 4 then error Error.Record("Selection","Invalid acquisition contract or selection bounds (four results total).",null) else rawConfig,
+        single = Record.FieldOrDefault(rawConfig,"schema_version",null) = "acquisition/2",
+        requestedSides = if single then {rawConfig[selected]} else {rawConfig[baseline],rawConfig[candidate]},
+        config = if not List.Contains({"acquisition/1","acquisition/2"},Record.FieldOrDefault(rawConfig,"schema_version",null)) or not List.Contains({"LoadTest","ApplicationTest","ContinuousTest"},rawConfig[test_type])
+                 or (single and (Record.HasFields(rawConfig,"baseline") or Record.HasFields(rawConfig,"candidate") or List.Count(rawConfig[selected][ids]) <> 1))
+                 or List.AnyTrue(List.Transform(requestedSides,each List.Count([ids]) < 1)) or List.Sum(List.Transform(requestedSides,each List.Count([ids]))) > 4 then error Error.Record("Selection","Invalid acquisition contract or selection bounds (four results total).",null) else rawConfig,
         end = DateTimeZone.FixedUtcNow(), hours = Record.FieldOrDefault(config,"rolling_hours",null),
         window = if hours <> null then [from=DateTimeZone.ToText(end-#duration(0,hours,0,0),"yyyy-MM-ddTHH:mm:ss.fffZ"),to=DateTimeZone.ToText(end,"yyyy-MM-ddTHH:mm:ss.fffZ")]
                  else if Record.FieldOrDefault(config,"start",null) <> null then [from=config[start],to=config[end]] else [],
-        sides = {config[baseline],config[candidate]},
+        sides = if single then {config[selected]} else {config[baseline],config[candidate]},
         deadline = end+#duration(0,0,5,0),
         records = List.Combine(List.Transform(sides,(s) => List.Combine(List.Transform(s[ids],(id) => Fetch(host,config[test_type],s[label],id,window,config[metrics],deadline))))),
         version = Get(host,"system/version",[],0,deadline),

@@ -13,8 +13,12 @@ from .selection import Selection, rolling
 
 
 def build_live_report(config: dict[str, Any], directory: Path) -> None:
-    if config.get("schema_version") != "live-report/1":
-        raise ToolkitError("Expected live-report/1 configuration.")
+    single = config.get("schema_version") == "live-selection/1"
+    if config.get("schema_version") not in ("live-report/1", "live-selection/1"):
+        raise ToolkitError("Expected live-report/1 or live-selection/1 configuration.")
+    roles = ("selected",) if single else ("baseline", "candidate")
+    if single and ("baseline" in config or "candidate" in config):
+        raise ToolkitError("A selected-source report cannot include comparison roles.")
     origin = canonical_origin(config["origin"])
     kind = config["test_type"]
     start, end = config.get("start"), config.get("end")
@@ -25,15 +29,19 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
                 "Rolling windows are exclusive to Continuous, without fixed boundaries."
             )
         start, end = rolling(hours)
-    for side in ("baseline", "candidate"):
+    for side in roles:
         if not config[side].get("label"):
             raise ToolkitError("Explicit scenario labels are required.")
         Selection(kind, config[side]["ids"], start, end).validate()
-    if config["baseline"]["label"] == config["candidate"]["label"]:
+    if single and len(config["selected"]["ids"]) != 1:
+        raise ToolkitError(
+            "A selected-source live report requires exactly one result ID; no pooled mean."
+        )
+    if not single and config["baseline"]["label"] == config["candidate"]["label"]:
         raise ToolkitError("Scenario labels must differ.")
-    if set(config["baseline"]["ids"]) & set(config["candidate"]["ids"]):
+    if not single and set(config["baseline"]["ids"]) & set(config["candidate"]["ids"]):
         raise ToolkitError("Baseline and candidate must use different IDs.")
-    if len(config["baseline"]["ids"]) + len(config["candidate"]["ids"]) > 4:
+    if sum(len(config[role]["ids"]) for role in roles) > 4:
         raise ToolkitError("The preview live connector permits at most four results per refresh.")
     metrics = validate_metrics(config.get("metrics"))
     for metric in metrics:
@@ -68,8 +76,8 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         ):
             raise ToolkitError("Session metrics must group by instance, fieldName and unit.")
     # Only allowed fields are serialized into M. Never accept a token parameter.
-    acquisition = {k: config[k] for k in ("test_type", "baseline", "candidate", "metrics")}
-    acquisition["schema_version"] = "acquisition/1"
+    acquisition = {k: config[k] for k in ("test_type", *roles, "metrics")}
+    acquisition["schema_version"] = "acquisition/2" if single else "acquisition/1"
     acquisition.update({k: config[k] for k in ("start", "end", "rolling_hours") if k in config})
 
     def reject_secrets(value: Any) -> None:
@@ -88,8 +96,7 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
     reject_secrets(config)
     placeholder = {
         "schema_version": "live-placeholder/1",
-        "baseline": config["baseline"],
-        "candidate": config["candidate"],
+        **{role: config[role] for role in roles},
         "test_type": kind,
         "metrics": [],
         "coverage": [],
@@ -97,6 +104,17 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
             "Refreshable project has no acquired data until a successful Desktop refresh."
         ],
     }
+    if single:
+        placeholder = {
+            "schema_version": "capture-report/1",
+            "selected": config["selected"],
+            "metrics": [],
+            "coverage": [],
+            "endpoint_outcomes": [],
+            "warnings": [
+                "Refreshable selected-source project has no acquired data until a successful Desktop refresh."
+            ],
+        }
     build_report(
         placeholder,
         directory,
@@ -144,8 +162,8 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
     def dax_string(value: str) -> str:
         return '"' + value.replace('"', '""') + '"'
 
-    base_label = dax_string(config["baseline"]["label"])
-    candidate_label = dax_string(config["candidate"]["label"])
+    base_label = dax_string(config["selected" if single else "baseline"]["label"])
+    candidate_label = dax_string(config["selected" if single else "candidate"]["label"])
     filter_kind = 'Results[row_kind] IN {"measurement", "session_metric"}'
     unit_guard = "COUNTROWS(FILTER(ALLSELECTED(Results[unit]), NOT ISBLANK(Results[unit]))) = 1 && HASONEVALUE(Results[metric_key])"
     measures = [
@@ -200,7 +218,25 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
             "formatString": "0",
         },
     ]
-    for side, label in (("Baseline", base_label), ("Candidate", candidate_label)):
+    if single:
+        measures[:6] = [
+            {
+                "name": "Observed Mean",
+                "expression": f"IF({unit_guard}, CALCULATE(AVERAGE(Results[value]), {filter_kind}))",
+                "formatString": "0.00",
+            },
+            {
+                "name": "Samples",
+                "expression": f"CALCULATE(COUNT(Results[value]), {filter_kind})",
+                "formatString": "0",
+            },
+            {
+                "name": "Missing",
+                "expression": f'CALCULATE(COUNTROWS(Results), {filter_kind}, Results[observation_present] = "true", ISBLANK(Results[value]))',
+                "formatString": "0",
+            },
+        ]
+    for side, label in () if single else (("Baseline", base_label), ("Candidate", candidate_label)):
         measures.append(
             {
                 "name": side + " Missing",
@@ -273,14 +309,18 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
                     + [
                         field(n, True)
                         for n in (
-                            "Baseline Mean",
-                            "Candidate Mean",
-                            "Absolute Change",
-                            "Relative Change Percent",
-                            "Baseline Samples",
-                            "Candidate Samples",
-                            "Baseline Missing",
-                            "Candidate Missing",
+                            ("Observed Mean", "Samples", "Missing")
+                            if single
+                            else (
+                                "Baseline Mean",
+                                "Candidate Mean",
+                                "Absolute Change",
+                                "Relative Change Percent",
+                                "Baseline Samples",
+                                "Candidate Samples",
+                                "Baseline Missing",
+                                "Candidate Missing",
+                            )
                         )
                     ]
                 }
@@ -291,11 +331,13 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
             320,
         ),
         (
-            "change_chart",
+            "observation_chart" if single else "change_chart",
             "clusteredBarChart",
             {
                 "Category": {"projections": [field("metric_key")]},
-                "Y": {"projections": [field("Absolute Change", True)]},
+                "Y": {
+                    "projections": [field("Observed Mean" if single else "Absolute Change", True)]
+                },
             },
             0,
             450,
