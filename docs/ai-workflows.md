@@ -22,3 +22,9 @@ The [prompt gallery](prompt-gallery.md) specifies inputs, artifacts, skills, no-
 - “Build an editable report from this comparison, using a unit filter, change chart and failure coverage table. Explain which checks need Desktop.”
 
 Blog A evidence can show the repeatable path from existing Login Enterprise results to trusted exports/comparisons, with clearly labeled synthetic migration examples until live proof exists. Blog B can show prompt-to-config-to-artifact refinement and actual snapshot/refresh validation. Safe asset ideas include a synthetic report screenshot, artifact lineage, manifest excerpt and unit-aware comparison. Neither blog is published or presented as a benchmark in this repository. The owner's private writing workflow stays outside public content.
+
+## Restricted-host discovery
+
+Project-local adapters remain the ordinary installation path. The observed Claude Code 2.1.281 restricted session ignored default project skill discovery. An explicit session-only bundle, `claude --plugin-dir .`, loaded canonical skills as `/le-results:le-retrieve-results`, `/le-results:le-compare-scenarios` and `/le-results:le-build-reports`. The small manifest adds no hooks, MCP server or background service. Use a public/synthetic-only directory and restricted exact command permissions for demonstrations; do not grant blanket shell access to make a skill run.
+
+Actual command-backed synthetic demonstrations include missing-profile readiness, ambiguous names, selection/verification, comparisons, missing metrics, finite/snapshot/live generation and refinement. Native invocation and ordinary project discovery are separate observations. No Claude appliance acquisition or Desktop acceptance is inferred from these safe samples.

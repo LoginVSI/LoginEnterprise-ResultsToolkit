@@ -4,6 +4,23 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Representative evidence and focused review, 2026-10-14
+
+This is the current acceptance record; older dated entries remain history. The existing branch/draft PR and prior three independent Claude reviews were preserved. The resolved TLS and resource-sort fixes were retained without reopening them. No test or appliance configuration was created or changed.
+
+Metadata-first discovery screened bounded Load/Application subsets and 29 Continuous definitions. Full definitions explicitly reported disabled; sampled timestamps nevertheless identified a recently retained long-running workload with resources and passing/failed/unfinished application evidence. This reconciles a configuration-only discovery limit without asserting healthy current collection. A retained 12-minute capture completed with 960 resource rows across eight source groups, 31 timers, four executions, 11 events and native EUX intervals. A separate 90-second capture fits the live connector's 200-row sequence limit. Source hashes, counts, raw arithmetic and available relationships were reconciled independently. Narrow timer/execution windows can leave unresolved non-null references; new manifests record that coverage separately from acquisition completeness. Current health and advancing observations remain unproven.
+
+Successful and orchestration-diagnostic Application evidence was captured without inventing EUX/VSImax. The documented native Application PDF GET returned a parsed three-page private artifact; no report job was created. Selected Load resources remain successfully empty. Their source-unit timing comparison and completed-work limits are retained; this is not an OS migration or CPU efficiency result.
+
+Customer changes add broader bounded Continuous screening, full-definition/sample timestamp separation, safe probe/source identity failures, verified nonzero partial-export exits, native PDF limits/encoding handling, finite numeric resource tables and a single-source refreshable report without pooled results or artificial comparison roles. Optional line-protocol export prepares bounded files with source ns timestamps and provenance; it performs no destination writes or checkpoint advancement.
+
+A focused public-only Claude review ran 122 tests/lint/types independently and identified compressed-PDF, HTML-structure and documentation issues plus lower-severity integrity gaps. Actual findings were preserved and assessed; [dispositions](audit-2026-10-14.md) link executed regressions and accepted runtime limits. The reviewer ran an extra read-only line-count command outside the requested scope; this is recorded, and the follow-up review exposes no shell tool. The final local suite passes 140 tests, lint and types across 18 source modules. A narrow independent follow-up confirmed all five lower-severity fixes and found no material issues. Fresh-wheel workflows, Windows wrappers, schemas and M parsing pass; final-head CI is recorded with the PR.
+
+Codex and Claude exercised the same safe synthetic arithmetic/coverage workflow. Claude native invocation of all three canonical skills succeeded through an explicit session-only bundle; default restricted project discovery did not load them. Missing-profile/ambiguity/missing-metric/refinement outcomes, commands and actual artifacts were recorded separately from the code audit. No Claude appliance acquisition is claimed.
+
+Windows native UI pipe remains unavailable and browser inventory is empty. Snapshot local-file refresh/save, live connector policy/Key/trust, runtime M/DAX fixtures, two Desktop refreshes and new-data ingestion are still pending. Actual standard-user/native Linux/macOS vault proof and licensing remain external checkpoints. Private blogs, original flow asset/storyboard, partner/internal drafts and release preparation are unpublished. No screenshot, recording, stakeholder message, release or main merge occurred.
+
+
 ### Independent review and resource recovery, 2026-10-13
 
 After authentication renewal, Claude Code completed the prepared restricted audit of the public-only `d5cb29f` snapshot. It independently ran 80 tests, lint and types, and recomputed synthetic arithmetic. No private inputs, appliance access or editing tools were available. Original findings are preserved privately; [dispositions](audit-2026-10-13.md) separate confirmed fixes from accepted platform/runtime limits. Reported reproductions were code traces, followed here by executed regressions.
@@ -38,7 +55,7 @@ Implementation commit `f9fe955` passes both the [push matrix](https://github.com
 
 Desktop 2.158.1304.0 is installed; UI inventory exposes no native app/browser surfaces. Open/refresh, approved connector policy/Key enrollment, two live refreshes and new observations remain owner checkpoints. Actual account membership is administrator despite a non-elevated token; standard-user proof remains pending. Claude review failed before inference because OAuth access expired and could not refresh. The public-only snapshot, prompt and restricted runner remain ready; no independent findings exist. Private writing guidance was applied to unpublished drafts, claim map, flow/demo brief and partner handoff. Nothing was published or sent. Licensing remains an owner decision.
 
-A broader Continuous discovery returned 29 configured tests within a 100-record bound, with none enabled. Retained historical sessions remain useful, but active collection/new-data ingestion require an owner-managed test. The Load comparator now explicitly warns about differing completed-work/failure coverage. Final raw reconciliation includes successful, orchestration-diagnostic and historical Continuous evidence.
+A broader Continuous discovery returned 29 configured tests within a 100-record bound, with none enabled. Retained historical sessions remain useful. The 2026-10-14 record supersedes the earlier proposed new-test action: only existing tests/results may be used, and current health/new observations require evidence from those workloads. The Load comparator now explicitly warns about differing completed-work/failure coverage. Final raw reconciliation includes successful, orchestration-diagnostic and historical Continuous evidence.
 
 This continuation and [capability matrix](capabilities.md) supersede the older table's pending-credential/live entries. Dated historical checks below remain provenance; final audit/check/CI outcomes are added as they complete.
 
@@ -56,7 +73,7 @@ Work is on `feat/results-toolkit-foundation`. Foundation checkpoint `de5fa0f` an
 | Refreshable acquisition and generated live model | Yes | M syntax, schemas and generated references checked; M execution pending | Pending | Pending subsequent refresh |
 | Portable AI skills and customer documentation | Yes | Three canonical skills validate; six thin host adapters; no-AI walkthrough | N/A | N/A |
 | Hosted Windows/Linux/macOS core CI | Yes | Six OS/Python combinations and M parser pass, including fresh wheel walkthroughs | N/A | N/A |
-| InfluxDB/Grafana | Planned | No implementation | No | N/A |
+| InfluxDB/Grafana | Optional finite file mapping implemented | Escaping/identity/precision fixtures pass; no destination runtime | No destination writes | N/A |
 | Independent Claude Code audit | Completed public-only review and documented dispositions | Claude ran tests/lint/types | No appliance requests | No Desktop/host proof |
 
 ## Decisions and contract evidence

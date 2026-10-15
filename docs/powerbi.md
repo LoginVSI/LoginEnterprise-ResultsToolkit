@@ -45,3 +45,9 @@ node scripts\validate_m.cjs scripts\powerquery-validation adapters\powerbi\Resul
 ```
 
 The schema validator downloads only official Microsoft schema URLs into ignored local cache and records hashes there. A populated cache allows repeat validation without downloads. M validation uses Microsoft's parser, not a Mashup evaluator; install the pinned validation dependency as described in CONTRIBUTING.md. The independent audit must keep those distinctions visible.
+
+## Single-source and resource evidence
+
+`examples/continuous-selected-report.json` is an editable `live-selection/1` example for exactly one ID. The builder emits `acquisition/2` and observed mean/sample/missing/failure measures without comparison deltas. The rebuilt connector supports both acquisition versions. Choose a short window: every underlying resource group is downloaded before metric matching, and the connector still limits each sequence to 200 rows. A selected CPU alone does not bypass that resource-row bound.
+
+Finite reports include numeric timer and resource source tables with unit, field, instance, timestamp and session reference. HTML caps each visible source table at 500 rows; full evidence remains bundled. Source-type mixtures or integers that cannot be represented exactly in numeric report columns are refused. All snapshot partitions use local files and need no appliance credential at refresh. This source inspection does not establish actual Desktop execution.

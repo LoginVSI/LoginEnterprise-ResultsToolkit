@@ -14,6 +14,8 @@ Power BI has a local-file snapshot project and a refreshable project with indepe
 
 The explicit API adapter targets `/publicApi/v8-preview`. There is no v7 fallback. Verified HTTPS and bounded read-only capture have been exercised on Login Enterprise 6.9.2. Explicit resource sorting recovered endpoint requests; new captures are separate from the preserved earlier failures. Successful empty responses do not establish measured resource coverage. Desktop 2.158.1304.0 is installed; execution acceptance remains pending. See the [capability matrix](docs/capabilities.md) and [progress/evidence](docs/progress.md).
 
+Broader discovery found populated resources and passing/failed application work in a retained Continuous window. Recommendations inspect source timestamps and full definitions separately; current collection health and new-data refresh remain unverified. Finite reports show timer/resource rows. A single-source refreshable project avoids inventing comparison roles. Native Application PDF retrieval uses the documented GET route without creating a report job.
+
 ## Requirements
 
 | Workflow | Requirements |
@@ -38,6 +40,9 @@ Follow the [setup path](docs/quickstart.md), [readiness bootstrap](scripts/Test-
 - [Portable AI workflows and no-AI equivalents](docs/ai-workflows.md)
 - [Prompt gallery](docs/prompt-gallery.md)
 - [Read-only live acceptance](docs/live-validation.md)
+- [Customer workflows and failure behavior](docs/customer-workflows.md)
+- [Compatibility and preview release checks](docs/release-readiness.md)
+- [Optional time-series file export](docs/timeseries.md)
 - [Contributor guidance](CONTRIBUTING.md) and [independent Claude audit](docs/claude-audit.md)
 
 No license was present in the initial checkout. Licensing is an unresolved owner decision. Public visibility does not establish permission to reuse upstream code or assets. This toolkit copies no source or assets from LE-PBI-Connector.

@@ -16,4 +16,12 @@ Replace placeholders with reviewed paths or IDs. Canonical skills live in `skill
 
 “Compare the Windows tests” does not establish IDs or operating systems. Use bounded discovery, inspect source metadata and resolve selections. If several meanings remain, ask one focused question and continue independent work. Names cannot authorize mutation or establish causality.
 
-The current Codex continuation exercised readiness, recommendations, capture, timer-only comparison and reporting with canonical skills. Synthetic missing-metric handling/refinement is recorded privately. Claude adapters and other examples need their own host evidence; a code audit or unit suite does not establish them.
+The current Codex continuation exercised readiness, recommendations, capture, timer-only comparison and reporting with canonical skills. Synthetic missing-metric handling/refinement is recorded privately. Claude safe-sample host evidence is recorded separately below; a code audit or unit suite does not establish host behavior.
+
+The safe-sample Claude workflow was exercised through canonical instructions and explicit native skill invocation. Restricted default project discovery was unavailable; the session-only bundle loaded successfully. Live Claude discovery/export remains unexercised because only public/synthetic data was supplied.
+
+| Additional request | Skill / command | Verification |
+|---|---|---|
+| “Show this one retained Continuous workload without inventing a baseline.” | le-build-reports; `report-live --config <live-selection/1.json> --out <new-project>` | Exactly one ID; observed means/counts, no comparison deltas. Respect the 200-row underlying sequence limit; Desktop pending. |
+| “Download the native PDF for this completed Application result.” | le-retrieve-results; `download-pdf --profile <profile> --application-run-id <UUID> --out <new-private.pdf>` | GET only, byte/hash outcome and no report job. Review private PDF content before sharing. |
+| “Prepare this complete capture for another reporting destination.” | le-build-reports; `export-line-protocol --capture <capture> --out <new-batch>` | Prepared files/receipt only; no destination write, streaming or advanced checkpoint. |

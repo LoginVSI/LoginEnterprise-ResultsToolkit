@@ -96,3 +96,7 @@ Windows users may call the thin wrapper:
 ```
 
 The wrapper uses the checkout's native Windows Python environment. It does not invoke WSL or assume vault sharing. CLI exit codes are 0 for a completed operation, 2 for a safe diagnostic/failure, and 130 for cancellation. A complete retrieval does not mean the tested workload succeeded.
+
+## Extended customer workflows
+
+The [workflow reference](customer-workflows.md) covers broader Continuous screening, explicit export failure exits, finite timer/resource reports, a single-source refreshable project and existing Application PDF download. Use `live-selection/1` for one Continuous ID without comparison deltas. The [optional time-series path](timeseries.md) produces files only and is not an integration prerequisite.
