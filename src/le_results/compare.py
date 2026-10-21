@@ -201,11 +201,25 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
         executions = [
             r for r in load_table(directory, "executions") if r.get("testRunId") in scenario["ids"]
         ]
+        timed_executions = {
+            (row.get("testRunId"), row.get("appExecutionId"))
+            for row in load_table(directory, "measurements")
+        }
+        timing_link_unknown = any(
+            row.get("testRunId") in scenario["ids"] and not row.get("appExecutionId")
+            for row in load_table(directory, "measurements")
+        )
         coverage.append(
             {
                 "scenario": scenario["label"],
                 "sessions": len(sessions),
                 "executions": len(executions),
+                "successful_executions": sum(r.get("state") == "ended" for r in executions),
+                "executions_without_measurements": None
+                if timing_link_unknown
+                else sum(
+                    (r.get("testRunId"), r.get("id")) not in timed_executions for r in executions
+                ),
                 "completed_executions": sum(
                     r.get("state") in ("ended", "endedWithErrors") for r in executions
                 ),

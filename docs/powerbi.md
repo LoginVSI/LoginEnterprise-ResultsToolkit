@@ -2,6 +2,8 @@
 
 Power BI is the first reporting adapter, not the engine's only destination. The builder produces editable PBIP/PBIR reports, model.bim definitions, M queries and a report specification. Supported visuals are a comparison table, unit slicer, change chart and coverage table. Desktop 2.159.883.0 x64 is the observed 20 October installation; the earlier target was 2.158.1304.0. Public schema validation and M parsing do not substitute for Desktop execution.
 
+The opt-in [engineering review layout](review-demo.md) adds a 16:9 overview with native summary cards, source-unit timing bars, signed percentage changes and a separate evidence page. It uses the same verified comparison as the portable HTML. New layout acceptance remains separate from the earlier owner-tested projects.
+
 ## Snapshot acceptance
 
 `report-capture --capture PATH --out NEW_DIRECTORY` creates a finite editable source report for one capture. It keeps partial endpoint outcomes without inventing baseline/candidate scenarios. Reconcile source rows, session/execution relationships and failures. Timer units remain unconfirmed unless separately established.

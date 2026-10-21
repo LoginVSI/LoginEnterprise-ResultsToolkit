@@ -76,6 +76,15 @@ def build_report(
         if len(paths) != 2 or not comparison.get("configuration"):
             raise ToolkitError("Rebuild the comparison with its configuration before reporting.")
         expected = compare(Path(paths[0]), Path(paths[1]), comparison["configuration"])
+        # Older comparison-result/1 files predate these additive coverage counters.
+        # Omission is compatible; a supplied value must still match source evidence.
+        old_coverage = comparison.get("coverage")
+        if isinstance(old_coverage, list) and len(old_coverage) == 2:
+            for old_side, new_side in zip(old_coverage, expected["coverage"], strict=True):
+                if isinstance(old_side, dict):
+                    for key in ("successful_executions", "executions_without_measurements"):
+                        if key not in old_side:
+                            new_side.pop(key)
         if comparison != expected:
             raise ToolkitError(
                 "Comparison differs from its verified source/configuration; rebuild it."
@@ -91,7 +100,7 @@ def build_report(
         if config is None
         else dict(config)
     )
-    if set(config) - {"schema_version", "title", "visuals"}:
+    if set(config) - {"schema_version", "title", "visuals", "layout", "overview_table"}:
         raise ToolkitError(
             "Unsupported report specification fields; keep credentials out of reports."
         )
@@ -118,6 +127,15 @@ def build_report(
         raise ToolkitError(
             "Unsupported visual; use comparison_table, change_chart, unit_filter or coverage_table."
         )
+    review = config.get("layout", "standard") == "review"
+    if config.get("layout", "standard") not in ("standard", "review"):
+        raise ToolkitError("Report layout must be standard or review.")
+    if "overview_table" in config and (not review or type(config["overview_table"]) is not bool):
+        raise ToolkitError("overview_table is a boolean option for the review layout.")
+    if review:
+        from .review_report import validate_review
+
+        validate_review(comparison, config)
     if directory.exists() and any(directory.iterdir()):
         raise ToolkitError("Report destination must be empty.")
     preflight_tables: dict[str, list[dict[str, Any]]] = {name: [] for name in TABLES}
@@ -427,7 +445,7 @@ def build_report(
             "nativeQueryRef": name,
         }
 
-    for index, name in enumerate(config["visuals"]):
+    for index, name in enumerate([] if review else config["visuals"]):
         if name == "unit_filter":
             visual = {
                 "visualType": "slicer",
@@ -670,6 +688,10 @@ def build_report(
     (directory / ".gitignore").write_text(
         "**/.pbi/localSettings.json\n**/.pbi/cache.abf\n", encoding="utf-8"
     )
+    if review:
+        from .review_report import build_review
+
+        build_review(comparison, directory, config)
 
 
 def build_capture_report(

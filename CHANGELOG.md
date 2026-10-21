@@ -2,6 +2,8 @@
 
 ## Community preview, unreleased
 
+- Add a reproducible three-action synthetic review and an opt-in 16:9 HTML/Power BI presentation with explicit failure and timing coverage. Configuration-only refinement preserves the verified data and moves details to a second page. New Desktop layout acceptance remains pending.
+
 - Addressed independent Claude findings with session-window coverage, per-result timer-only gates, pinned trust material, strict TLS across supported runtimes, explicit metric identity and role-scoped snapshot relationships.
 - Recovered the observed session-metric HTTP 500 with explicit timestamp sorting. Fresh bounded captures preserve empty resource responses; earlier failed captures remain immutable.
 - Bounded live connector acquisition, retained native credential errors and missing counts, and strengthened comparison/source validation. Desktop execution remains pending.

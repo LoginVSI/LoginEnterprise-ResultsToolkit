@@ -4,6 +4,10 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Synthetic engineering review, 2026-10-21
+
+A new reproducible three-action fixture and opt-in review layout demonstrate a customer-style image review without appliance requests. HTML and editable local-file PBIP share the verified comparison and numeric presentation data. One failed candidate execution has no timing record; coverage keeps that absence separate from zero and from acquisition completion. The 16:9 overview uses native cards/charts/tables and an evidence page; a configuration-only refinement moves sample-count detail off the first page while preserving the failure warning. [Direct commands and limitations](review-demo.md) are available without AI. Earlier accepted projects and Desktop edits remain untouched. This new layout requires its own Desktop acceptance after the other session releases it; schema/render checks do not establish runtime acceptance. Final checks and CI are recorded with the existing draft PR.
+
 ### Practical Desktop acceptance, 2026-10-20
 
 Continued from clean `0b37d60`; existing branch/draft PR and all previous evidence remain preserved. Owner-observed acceptance covers one snapshot open/refresh/edit/save/reopen and one fixed-window live project's two refreshes/save/reopen. The owner-edited project was backed up and not regenerated. Its reported numeric values are consistent with retained raw records; units/grain and uninspected visual-filter/export limits remain explicit.

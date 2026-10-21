@@ -31,6 +31,10 @@ jobs:
       - run: le-results compare --baseline artifacts/walkthrough/baseline --candidate artifacts/walkthrough/candidate --config artifacts/walkthrough/compare.json --out artifacts/walkthrough/comparison.json
       - run: le-results report --comparison artifacts/walkthrough/comparison.json --out artifacts/walkthrough/report
       - run: python scripts/validate_powerbi.py artifacts/walkthrough/report
+      - run: le-results demo --scenario windows-review --out artifacts/review-input
+      - run: le-results compare --baseline artifacts/review-input/baseline --candidate artifacts/review-input/candidate --config artifacts/review-input/compare.json --out artifacts/review-comparison.json
+      - run: le-results report --comparison artifacts/review-comparison.json --config examples/review-report.json --out artifacts/review-overview
+      - run: python scripts/validate_powerbi.py artifacts/review-overview
       - run: le-results report-live --config examples/live-report.json --out artifacts/live-report
       - run: python scripts/validate_powerbi.py artifacts/live-report
       - run: le-results report-live --config examples/continuous-selected-report.json --out artifacts/selected-live-report

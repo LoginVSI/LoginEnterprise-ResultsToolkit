@@ -99,7 +99,9 @@ def parser() -> argparse.ArgumentParser:
     finite.add_argument("--config", type=Path, help="Editable finite report/1 specification")
     synthetic = sub.add_parser("demo")
     synthetic.add_argument(
-        "--scenario", choices=["windows-migration", "security-agent"], default="windows-migration"
+        "--scenario",
+        choices=["windows-migration", "security-agent", "windows-review"],
+        default="windows-migration",
     )
     synthetic.add_argument("--out", type=Path, required=True)
     live_report = sub.add_parser("report-live")

@@ -33,6 +33,7 @@ Follow the [setup path](docs/quickstart.md), [readiness bootstrap](scripts/Test-
 
 - [Installation and CLI walkthrough](docs/quickstart.md)
 - [Power BI snapshot and refreshable reporting](docs/powerbi.md)
+- [Synthetic application review and meeting refinement](docs/review-demo.md)
 - [Data dictionary and comparison rules](docs/data-dictionary.md)
 - [Architecture and tradeoffs](docs/architecture.md)
 - [API/reference provenance](docs/api-notes.md)
