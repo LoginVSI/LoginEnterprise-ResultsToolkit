@@ -176,7 +176,9 @@ RowsImpl = (origin as text, configuration as text) as table =>
         deadline = end+#duration(0,0,5,0),
         records = List.Combine(List.Transform(sides,(s) => List.Combine(List.Transform(s[ids],(id) => Fetch(host,config[test_type],s[label],id,window,config[metrics],deadline))))),
         version = Get(host,"system/version",[],0,deadline),
-        raw = Table.Buffer(Table.FromRecords(List.Combine({{Row("metadata","Appliance","",version,window)},records}),EmptyRows,MissingField.UseNull)),
+        // Row emits every column. UseNull rejects this type's required non-nullable columns.
+        // Optional values are already explicit nulls; a missing constructed field is a contract error.
+        raw = Table.Buffer(Table.FromRecords(List.Combine({{Row("metadata","Appliance","",version,window)},records}),EmptyRows,MissingField.Error)),
         errorCheck = Table.RowCount(Table.SelectRowsWithErrors(raw)),
         result = if errorCheck > 0 then error Error.Record("Contract", "Acquisition contains invalid cells; refresh refused.", null) else Table.Distinct(raw),
         captured = Table.AddColumn(result,"captured_at",each DateTimeZone.ToText(end,"yyyy-MM-ddTHH:mm:ss.fffZ"),type text),

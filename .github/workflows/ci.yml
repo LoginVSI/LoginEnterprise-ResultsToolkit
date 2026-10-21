@@ -59,4 +59,4 @@ jobs:
       - run: le-results report-live --config examples/continuous-report.json --out artifacts/continuous-report
       - run: le-results report-live --config examples/continuous-selected-report.json --out artifacts/selected-live-report
       - run: npm ci --ignore-scripts --prefix scripts/powerquery-validation
-      - run: node scripts/validate_m.cjs scripts/powerquery-validation adapters/powerbi/ResultsToolkit.pq artifacts/live-report/Acquisition.pq artifacts/continuous-report/Acquisition.pq artifacts/selected-live-report/Acquisition.pq
+      - run: node scripts/validate_m.cjs scripts/powerquery-validation adapters/powerbi/ResultsToolkit.pq artifacts/live-report/Acquisition.pq artifacts/continuous-report/Acquisition.pq artifacts/selected-live-report/Acquisition.pq tests/fixtures/connector-table-type.pq

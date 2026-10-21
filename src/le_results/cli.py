@@ -96,6 +96,7 @@ def parser() -> argparse.ArgumentParser:
     finite.add_argument("--capture", type=Path, required=True)
     finite.add_argument("--out", type=Path, required=True)
     finite.add_argument("--title", default="Selected result evidence")
+    finite.add_argument("--config", type=Path, help="Editable finite report/1 specification")
     synthetic = sub.add_parser("demo")
     synthetic.add_argument(
         "--scenario", choices=["windows-migration", "security-agent"], default="windows-migration"
@@ -280,7 +281,8 @@ def run(args: argparse.Namespace) -> Any:
     if args.command == "report-capture":
         from .report import build_capture_report
 
-        build_capture_report(args.capture, args.out, args.title)
+        config = json.loads(args.config.read_text(encoding="utf-8")) if args.config else None
+        build_capture_report(args.capture, args.out, args.title, config)
         return {
             "out": str(args.out),
             "scope": "finite capture evidence",

@@ -165,7 +165,10 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
     base_label = dax_string(config["selected" if single else "baseline"]["label"])
     candidate_label = dax_string(config["selected" if single else "candidate"]["label"])
     filter_kind = 'Results[row_kind] IN {"measurement", "session_metric"}'
-    unit_guard = "COUNTROWS(FILTER(ALLSELECTED(Results[unit]), NOT ISBLANK(Results[unit]))) = 1 && HASONEVALUE(Results[metric_key])"
+    unit_guard = (
+        "COUNTROWS(FILTER(ALLSELECTED(Results[unit]), NOT ISBLANK(Results[unit]))) = 1 && "
+        f"CALCULATE(HASONEVALUE(Results[metric_key]), {filter_kind})"
+    )
     measures = [
         {
             "name": "Baseline Mean",
@@ -384,6 +387,7 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         "Open Results.pbip; enroll the token once in Power Query's Key credential dialog for this origin. "
         "Refresh and reconcile with a Python capture for the identical IDs/window. "
         "A failed refresh is an error, not successful empty data. Rolling windows resolve once per query evaluation. "
-        "Subsequent refreshes acquire new data. This is not streaming. Desktop execution is pending.\n",
+        "Subsequent refreshes repeat acquisition; new-data proof requires advancing source timestamps. "
+        "This is not streaming. Record Desktop acceptance for this specific project and build.\n",
         encoding="utf-8",
     )

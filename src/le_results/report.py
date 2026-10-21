@@ -80,11 +80,30 @@ def build_report(
             raise ToolkitError(
                 "Comparison differs from its verified source/configuration; rebuild it."
             )
-    config = config or {
-        "schema_version": "report/1",
-        "title": "Login Enterprise result comparison",
-        "visuals": ["comparison_table", "change_chart", "unit_filter", "coverage_table"],
-    }
+    if config is not None and not isinstance(config, dict):
+        raise ToolkitError("Use a report/1 configuration object.")
+    config = (
+        {
+            "schema_version": "report/1",
+            "title": "Login Enterprise result comparison",
+            "visuals": ["comparison_table", "change_chart", "unit_filter", "coverage_table"],
+        }
+        if config is None
+        else dict(config)
+    )
+    if set(config) - {"schema_version", "title", "visuals"}:
+        raise ToolkitError(
+            "Unsupported report specification fields; keep credentials out of reports."
+        )
+    config.setdefault("title", "Login Enterprise result comparison")
+    if (
+        not isinstance(config["title"], str)
+        or not isinstance(config.get("visuals"), list)
+        or not all(isinstance(v, str) for v in config["visuals"])
+    ):
+        raise ToolkitError("Use a report/1 object with a text title and visual-name list.")
+    if len(set(config["visuals"])) != len(config["visuals"]):
+        raise ToolkitError("Report visual names must be unique.")
     if config.get("schema_version") != "report/1":
         raise ToolkitError("Unsupported report specification.")
     supported = {
@@ -654,8 +673,30 @@ def build_report(
 
 
 def build_capture_report(
-    source: Path, directory: Path, title: str = "Selected result evidence"
+    source: Path,
+    directory: Path,
+    title: str = "Selected result evidence",
+    config: dict[str, Any] | None = None,
 ) -> None:
+    if config is not None:
+        if (
+            not isinstance(config, dict)
+            or not isinstance(config.get("title", title), str)
+            or not isinstance(config.get("visuals"), list)
+            or not all(isinstance(v, str) for v in config["visuals"])
+        ):
+            raise ToolkitError(
+                "Use a report/1 object with a text title and a list of visual names."
+            )
+        if any(
+            v not in ("source_table", "resource_table", "coverage_table")
+            for v in config.get("visuals", [])
+        ):
+            raise ToolkitError(
+                "Finite evidence reports support source, resource and coverage tables only."
+            )
+        title = config.get("title", title)
+        config = {**config, "title": title}
     manifest = verify_capture(source)
     sessions = load_table(source, "sessions")
     executions = load_table(source, "executions")
@@ -699,7 +740,9 @@ def build_capture_report(
     build_report(
         result,
         directory,
-        {
+        config
+        if config is not None
+        else {
             "schema_version": "report/1",
             "title": title,
             "visuals": ["source_table", "resource_table", "coverage_table"],
@@ -708,8 +751,8 @@ def build_capture_report(
     )
     (directory / "OPEN-IN-DESKTOP.txt").write_text(
         "Open Results.pbip in Power BI Desktop, refresh local files, select one unit, and reconcile "
-        "means, deltas, sample counts and execution failures with comparison.json. "
-        "Desktop build 2.158.1304.0 is a target until this passes. "
+        "source rows, units, sample counts and execution failures with the retained capture. "
+        "This finite report has no baseline/candidate deltas. Record acceptance for this project/build. "
         "No appliance credential is required. Moving the directory requires regenerating file paths.\n",
         encoding="utf-8",
     )

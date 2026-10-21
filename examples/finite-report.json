@@ -1,0 +1,5 @@
+{
+  "schema_version": "report/1",
+  "title": "Selected timing and failure evidence",
+  "visuals": ["source_table", "coverage_table"]
+}

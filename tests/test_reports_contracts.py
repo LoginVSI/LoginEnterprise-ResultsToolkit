@@ -17,6 +17,60 @@ from le_results.synthetic import demo
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_connector_required_field_constructor_source_regression():
+    source = (ROOT / "adapters/powerbi/ResultsToolkit.pq").read_text()
+    assert "EmptyRows,MissingField.Error" in source
+    assert "EmptyRows,MissingField.UseNull" not in source
+    assert "Table.SelectRowsWithErrors(raw)" in source
+
+
+def test_titleless_finite_spec_defaults_before_output_and_rejects_secret_keys(tmp_path):
+    demo(tmp_path / "demo")
+    config = {"schema_version": "report/1", "visuals": ["source_table"]}
+    build_capture_report(tmp_path / "demo/baseline", tmp_path / "report", config=config)
+    assert (
+        json.loads((tmp_path / "report/report-spec.json").read_text())["title"]
+        == "Selected result evidence"
+    )
+    assert "title" not in config
+    for extra in ({"token": "synthetic-secret"}, {"visuals": ["source_table", "source_table"]}):
+        with pytest.raises(ToolkitError):
+            build_capture_report(
+                tmp_path / "demo/baseline", tmp_path / "bad", config={**config, **extra}
+            )
+        assert not (tmp_path / "bad").exists()
+
+
+def test_finite_refinement_keeps_evidence_and_rejects_comparison_visuals(tmp_path):
+    demo(tmp_path / "demo")
+    source = tmp_path / "demo/baseline"
+    build_capture_report(
+        source,
+        tmp_path / "refined",
+        config={
+            "schema_version": "report/1",
+            "title": "Timing and failures",
+            "visuals": ["source_table", "coverage_table"],
+        },
+    )
+    assert (tmp_path / "refined/evidence/selected/manifest.json").exists()
+    instruction = (tmp_path / "refined/OPEN-IN-DESKTOP.txt").read_text()
+    assert "no baseline/candidate deltas" in instruction
+    with pytest.raises(ToolkitError, match="Finite evidence"):
+        build_capture_report(
+            source,
+            tmp_path / "invalid",
+            config={"schema_version": "report/1", "visuals": ["change_chart"]},
+        )
+    assert not (tmp_path / "invalid").exists()
+
+
+@pytest.mark.parametrize("config", [[], {"visuals": "source_table"}, {"visuals": [[]]}])
+def test_finite_refinement_malformed_spec_is_actionable(tmp_path, config):
+    with pytest.raises(ToolkitError, match="report/1 object"):
+        build_capture_report(tmp_path / "not-needed", tmp_path / "report", config=config)
+
+
 def test_spec_versions_graph_provenance_and_read_only_adapter():
     provenance = json.loads((ROOT / "docs/api/provenance.json").read_text())
     for item in provenance:
@@ -205,6 +259,16 @@ def test_selected_live_source_has_no_comparison_measures(tmp_path):
     model = check_references(tmp_path / "selected")
     measures = {r["name"] for r in model["model"]["tables"][0]["measures"]}
     assert {"Observed Mean", "Samples", "Missing", "Execution Failures"}.issubset(measures)
+    mean = next(
+        m["expression"]
+        for m in model["model"]["tables"][0]["measures"]
+        if m["name"] == "Observed Mean"
+    )
+    assert (
+        'CALCULATE(HASONEVALUE(Results[metric_key]), Results[row_kind] IN {"measurement", "session_metric"})'
+        in mean
+    )
+    assert "ALLSELECTED(Results[unit])" in mean
     assert not any("Change" in r or "Baseline" in r or "Candidate" in r for r in measures)
     query = (tmp_path / "selected/Acquisition.pq").read_text()
     assert "acquisition/2" in query and "selected" in query and "baseline" not in query
