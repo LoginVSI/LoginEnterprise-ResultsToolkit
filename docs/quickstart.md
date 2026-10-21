@@ -100,3 +100,13 @@ The wrapper uses the checkout's native Windows Python environment. It does not i
 ## Extended customer workflows
 
 The [workflow reference](customer-workflows.md) covers broader Continuous screening, explicit export failure exits, finite timer/resource reports, a single-source refreshable project and existing Application PDF download. Use `live-selection/1` for one Continuous ID without comparison deltas. The [optional time-series path](timeseries.md) produces files only and is not an integration prerequisite.
+
+## Refine a selected snapshot
+
+Use an editable finite `report/1` specification to choose source, resource and coverage tables. Keep the capture and generate a new output folder; preserve saved Desktop edits.
+
+```powershell
+le-results report-capture --capture artifacts/selected --config examples/finite-report.json --out artifacts/selected-refined
+```
+
+This has no invented baseline/candidate or delta. Unsupported visual/type inputs fail explicitly. For live loading, install one reviewed package with `powershell.exe -NoProfile -File scripts/Install-LEResultsConnector.ps1 -Package artifacts/ResultsToolkit.mez`; save/close Desktop first. `-DiagnoseOnly` reports file/export presence, not host loading. See Power BI guidance for build-specific folders and separate Key/trust.

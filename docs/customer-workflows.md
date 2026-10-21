@@ -26,3 +26,13 @@ Reports retain unknown units and current-versus-historical configuration. Empty 
 Exit codes are 0 for an executed operation, 2 for diagnosis/acquisition/configuration failure and 130 for cancellation. Workload failure and acquisition completeness are separate: a complete capture can contain failed work. Unmatched metrics can produce a successful comparison operation with null means/deltas; inspect artifact coverage rather than the exit code alone.
 
 Manifests also record timer-to-execution relationship coverage: resolved, nullable and unresolved counts/IDs. A timer can refer to an execution outside the independently filtered execution window. That gap stays visible; acquisition can be complete while relationship coverage is incomplete. No missing execution is fabricated.
+
+## Refine a selected snapshot
+
+Use an editable finite `report/1` specification to choose source, resource and coverage tables. Keep the capture and generate a new output folder; preserve saved Desktop edits.
+
+```powershell
+le-results report-capture --capture artifacts/selected --config examples/finite-report.json --out artifacts/selected-refined
+```
+
+This has no invented baseline/candidate or delta. Unsupported visual/type inputs fail explicitly. For live loading, install one reviewed package with `powershell.exe -NoProfile -File scripts/Install-LEResultsConnector.ps1 -Package artifacts/ResultsToolkit.mez`; save/close Desktop first. `-DiagnoseOnly` reports file/export presence, not host loading. See Power BI guidance for build-specific folders and separate Key/trust.

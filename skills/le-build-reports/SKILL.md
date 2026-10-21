@@ -3,6 +3,8 @@ name: le-build-reports
 description: Build inspectable reporting artifacts from toolkit comparison/configuration files, with optional Power BI snapshot or refreshable projects.
 ---
 
+Finite capture refinement uses `report-capture --config` with a `report/1` title and unique source/resource/coverage visual names. Generate a new or empty output folder and preserve Desktop edits. Check connector registration with the user-scoped installer; file/export inspection is not host-loading proof. Key enrollment and native HTTPS trust remain separate. Accepted fixed-window refresh is not rolling/new-observation proof. Existing live measures retain old guard expressions until explicitly upgraded; see Power BI guidance.
+
 Read ../../docs/powerbi.md for Power BI requests and ../../docs/architecture.md for other destinations. Keep the engine's comparison authoritative. Resolve a request into `report/1` with supported visuals, or `live-report/1` with explicit source/selection/metric definitions. Use `le-results report` or `report-live`.
 
 Use `report-capture` for one capture/window, without inventing a comparison. Preserve endpoint outcomes, capture status, source datasets and failures. Partial reports stay partial. Follow ../../docs/troubleshooting.md for connection/trust problems; profile trust does not establish Power Query trust. The prompt gallery links requests to commands and acceptance.

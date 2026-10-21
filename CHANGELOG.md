@@ -20,3 +20,15 @@
 - Generate a single-source refreshable project without pooled results or artificial comparison roles.
 - Add optional finite line-protocol files with ns timestamps/provenance and no database write/checkpoint claim.
 - Record focused independent review, actual synthetic host demonstrations and remaining Desktop/platform/licensing gates.
+
+### 20 October practical acceptance
+
+- Add owner-authorized MIT license and package license metadata.
+- Add a user-scoped, backed-up single connector installer with explicit folder choice and no policy changes.
+- Fix the owner-demonstrated live table-type failure by retaining required-column errors rather than applying UseNull.
+- Add editable finite report refinement and accurate selected-report opening instructions.
+- Record project-specific snapshot/live owner acceptance, published first article and remaining runtime/platform limits.
+
+- Fix aggregate live metric-key scope without removing unit/instance guards; existing project measures require an explicit upgrade.
+- Update certifi hash locks for PYSEC-2026-4320; no TLS validation workaround.
+- Normalize finite titles and reject unknown/duplicate specification fields before output; strengthen installer checks and tested rollback.

@@ -77,3 +77,9 @@ Use native Windows Python under the vault-enrolled account. WSL has separate Lin
 Recommendation failures are retained per metadata/detail/session/observation probe. Request/deadline exhaustion is reported explicitly; narrow the scope before retrying. A successful one-record sample proves that observation exists, not collection health. Missing enabled fields remain unknown. `export` exits 2 when the manifest is partial/failed; `verify` checks hashes and reports status without upgrading completeness.
 
 Native PDF errors preserve HTTP/authentication distinctions, response encoding/byte/deadline failures and a refused existing destination. A write failure may leave a partial new file; keep it as failed evidence and use a new path. The credential-reflection check covers raw bytes only, not every embedded compressed/encoded PDF object.
+
+## Power BI connector and table-type errors
+
+`ResultsToolkit.Rows` unrecognized means the host has not made that export available. A ZIP listing is not loading proof. Check the effective Documents folder, installed build, duplicate toolkit registrations, package/source hash and Get Data/Key behavior. The user-scoped installer backs up canonical toolkit files outside both registration folders and preserves other connectors. It refuses installation while Desktop is running against the real Documents folder. Close after saving, install one package and restart; no administrator or policy change is needed. Review differently named toolkit duplicates manually before installing another.
+
+`The columns of the specified table type must be nullable` was a demonstrated constructor failure after loading. Rebuild/reinstall the current toolkit package; it uses `MissingField.Error` with its complete constructed records, retaining nullable optional values. Power Query certificate or 401/403 errors are later, separate stages. Record the exact category and stop at an unapproved certificate; do not weaken verification.

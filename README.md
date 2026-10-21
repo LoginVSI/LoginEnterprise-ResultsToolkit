@@ -10,9 +10,9 @@ The Python engine provides `le-results` commands for profiles, encrypted credent
 
 Start with the [offline quickstart](docs/quickstart.md). It generates a clearly labeled synthetic Windows migration example, retains a candidate execution failure, and reconciles the comparison against known source values. A security-agent variant is also available.
 
-Power BI has a local-file snapshot project and a refreshable project with independently authored Power Query acquisition. Both generate editable PBIP/PBIR reports and model.bim definitions. Actual capture reports pass the public schemas; **Desktop opening and refresh remain pending**. Generated files alone do not establish Desktop acceptance.
+Power BI has a local-file snapshot project and a refreshable project with independently authored Power Query acquisition. Both generate editable PBIP/PBIR reports and model.bim definitions. Actual capture reports pass the public schemas; **one snapshot and one fixed-window live project have owner-observed Desktop acceptance**. Snapshot refresh/edit/save/reopen and two live refreshes are recorded; this does not establish every project/build or fresh-data ingestion.
 
-The explicit API adapter targets `/publicApi/v8-preview`. There is no v7 fallback. Verified HTTPS and bounded read-only capture have been exercised on Login Enterprise 6.9.2. Explicit resource sorting recovered endpoint requests; new captures are separate from the preserved earlier failures. Successful empty responses do not establish measured resource coverage. Desktop 2.158.1304.0 is installed; execution acceptance remains pending. See the [capability matrix](docs/capabilities.md) and [progress/evidence](docs/progress.md).
+The explicit API adapter targets `/publicApi/v8-preview`. There is no v7 fallback. Verified HTTPS and bounded read-only capture have been exercised on Login Enterprise 6.9.2. Explicit resource sorting recovered endpoint requests; new captures are separate from the preserved earlier failures. Successful empty responses do not establish measured resource coverage. Desktop 2.159.883.0 x64 is the observed 20 October installation; project-specific acceptance is recorded separately. See the [capability matrix](docs/capabilities.md) and [progress/evidence](docs/progress.md).
 
 Broader discovery found populated resources and passing/failed application work in a retained Continuous window. Recommendations inspect source timestamps and full definitions separately; current collection health and new-data refresh remain unverified. Finite reports show timer/resource rows. A single-source refreshable project avoids inventing comparison roles. Native Application PDF retrieval uses the documented GET route without creating a report job.
 
@@ -45,4 +45,6 @@ Follow the [setup path](docs/quickstart.md), [readiness bootstrap](scripts/Test-
 - [Optional time-series file export](docs/timeseries.md)
 - [Contributor guidance](CONTRIBUTING.md) and [independent Claude audit](docs/claude-audit.md)
 
-No license was present in the initial checkout. Licensing is an unresolved owner decision. Public visibility does not establish permission to reuse upstream code or assets. This toolkit copies no source or assets from LE-PBI-Connector.
+Licensed under [MIT](LICENSE), copyright Login VSI. This remains an unsupported community preview. Upstream reuse rights are separate; this toolkit copies no source or assets from LE-PBI-Connector.
+
+Read the published [first article](https://www.linkedin.com/pulse/make-login-enterprise-comparisons-easier-repeat-weekly-joshua-kennedy-ujehc) for the motivation. The practical follow-up is being prepared; no Blog B publication is claimed.

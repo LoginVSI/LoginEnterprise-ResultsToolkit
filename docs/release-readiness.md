@@ -1,6 +1,6 @@
 # Preview compatibility and release readiness
 
-The branch and draft PR remain the review destination. No release or main merge is authorized by these checks. Licensing is an owner decision and remains a publication gate.
+The branch and draft PR remain the review destination. No release or main merge is authorized by these checks. MIT is bundled by owner authorization. Final acceptance/merge/publication remain owner decisions.
 
 | Contract / artifact | Version and compatibility boundary |
 |---|---|
@@ -10,14 +10,14 @@ The branch and draft PR remain the review destination. No release or main merge 
 | Refreshable comparison | `live-report/1` -> `acquisition/1`, at most four distinct selected results. |
 | Refreshable single source | `live-selection/1` -> `acquisition/2`, exactly one ID, same finite acquisition security and error barriers. Requires the rebuilt connector. |
 | Optional line-protocol file | `line-protocol-export/1`, ns precision, prepared-not-written; no destination/runtime compatibility claim. |
-| Power BI | Target installed Desktop 2.158.1304.0. Generation, schemas and M parsing pass; actual opening/refresh/M/DAX/source reconciliation pending. |
+| Power BI | Observed Desktop 2.159.883.0 x64. One snapshot and one fixed-window live project owner-accepted; source/read-only DAX reconcile. Rolling, new data, forced-offline and broader negative Mashup fixtures remain separate. |
 | Credential/platform | Native Windows enrollment/persistence and verified trust exercised. Actual non-admin and native Linux/macOS vault proof need suitable accounts/hosts. Hosted core CI is separate. |
 
 Build a wheel with `python -m build --wheel --outdir artifacts/wheels` and the unsigned development connector with `python scripts/build_connector.py --out artifacts/ResultsToolkit.mez`. Create a source archive from the reviewed final commit, record SHA-256 checksums, dependency locks and public-content check results. Install the wheel with committed hash locks in a new user-local environment outside the checkout and exercise demo/verify/compare/finite/snapshot/single-live/file-export workflows. Customers need no private development references.
 
 Release gates:
 
-- Owner selects licensing terms and confirms upstream reuse boundaries. No unlicensed source/assets are copied.
+- MIT LICENSE and package metadata are bundled; preserve upstream reuse boundaries and notices. No unlicensed source/assets are copied.
 - Tests, lint/types, audits, packaging, Windows wrappers, report schemas and generated/connector M pass on final head; verify all CI jobs on that head.
 - Review public source/PR/release text for credentials, appliance identities, customer/internal context and personal paths. Ignore rules alone are insufficient.
 - Record actual snapshot local-file refresh/editable save, error/identity M fixtures, connector policy/Key/trust, two live refreshes and source reconciliation before claiming Desktop acceptance. New-data proof requires advancing source observations.
