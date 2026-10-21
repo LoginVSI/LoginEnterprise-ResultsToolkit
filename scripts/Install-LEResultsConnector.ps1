@@ -99,19 +99,23 @@ try {
     [pscustomobject]@{Target=$target;PackageSHA256=$digest;Backups=$moves;RestartRequired=$true;HostLoaded='unverified';SecuritySettingsChanged=[bool]$UnblockDownloadedPackage;DownloadedFileUnblocked=[bool]$UnblockDownloadedPackage} | ConvertTo-Json -Depth 4
 } catch {
     $installError = $_.Exception.Message
-    if ($placed -and (Test-Path -LiteralPath $target) -and [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($target)) -eq [IO.Path]::GetFullPath($targetFolder) -and (Get-ToolkitHash $target) -eq $digest) {
-        try { Remove-Item -LiteralPath $target }
-        catch { [Console]::Error.WriteLine('New package remains at the target; retained backups: ' + $backup) }
-    }
-    foreach ($item in $moves) {
-        if (-not (Test-Path -LiteralPath $item.Original) -and (Test-Path -LiteralPath $item.Backup)) {
-            try { Copy-Item -LiteralPath $item.Backup -Destination $item.Original }
-            catch { [Console]::Error.WriteLine('Automatic restore failed; retained backup: ' + $item.Backup) }
+    try {
+        if ($placed -and (Test-Path -LiteralPath $target) -and [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($target)) -eq [IO.Path]::GetFullPath($targetFolder) -and (Get-ToolkitHash $target) -eq $digest) {
+            Remove-Item -LiteralPath $target
         }
+    } catch { [Console]::Error.WriteLine('New package could not be inspected or removed; retained backups: ' + $backup) }
+    foreach ($item in $moves) {
+        try {
+            if (-not (Test-Path -LiteralPath $item.Original) -and (Test-Path -LiteralPath $item.Backup)) {
+                Copy-Item -LiteralPath $item.Backup -Destination $item.Original
+            }
+        } catch { [Console]::Error.WriteLine('Automatic restore failed; retained backup: ' + $item.Backup) }
     }
-    if ($staged -and (Test-Path -LiteralPath $staged) -and [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($staged)) -eq [IO.Path]::GetFullPath($targetFolder) -and [IO.Path]::GetExtension($staged) -eq '.tmp') {
-        Remove-Item -LiteralPath $staged
-    }
+    try {
+        if ($staged -and (Test-Path -LiteralPath $staged) -and [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($staged)) -eq [IO.Path]::GetFullPath($targetFolder) -and [IO.Path]::GetExtension($staged) -eq '.tmp') {
+            Remove-Item -LiteralPath $staged
+        }
+    } catch { [Console]::Error.WriteLine('Staged file cleanup failed; retained backups: ' + $backup) }
     [Console]::Error.WriteLine('Connector installation failed: ' + $installError)
     exit 2
 }

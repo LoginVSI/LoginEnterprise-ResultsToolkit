@@ -91,7 +91,7 @@ def test_connector_rejects_wrong_package_before_touching_documents(tmp_path):
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows user-scoped installer")
-@pytest.mark.parametrize("failure_stage", ["move", "receipt"])
+@pytest.mark.parametrize("failure_stage", ["move", "receipt", "locked_cleanup", "receipt_same_folder"])
 def test_connector_failure_rolls_back_and_removes_only_its_staged_file(tmp_path, failure_stage):
     package = tmp_path / "current.mez"
     subprocess.run(
@@ -99,18 +99,20 @@ def test_connector_failure_rolls_back_and_removes_only_its_staged_file(tmp_path,
         check=True,
     )
     docs = tmp_path / "Documents"
-    original = docs / "Microsoft Power BI Desktop/Custom Connectors/ResultsToolkit.mez"
+    old_folder = "Power BI Desktop" if failure_stage == "receipt_same_folder" else "Microsoft Power BI Desktop"
+    original = docs / old_folder / "Custom Connectors/ResultsToolkit.mez"
     original.parent.mkdir(parents=True)
     original.write_bytes(b"previous toolkit preserved")
 
     def quote(path):
         return "'" + str(path).replace("'", "''") + "'"
 
-    fault = (
-        "function Move-Item { param($LiteralPath,$Destination) if($LiteralPath.EndsWith('.tmp')){throw 'synthetic final move failure'} Microsoft.PowerShell.Management\\Move-Item -LiteralPath $LiteralPath -Destination $Destination }; "
-        if failure_stage == "move"
-        else "function ConvertTo-Json { throw 'synthetic receipt failure' }; "
-    )
+    if failure_stage == "move":
+        fault = "function Move-Item { param($LiteralPath,$Destination) if($LiteralPath.EndsWith('.tmp')){throw 'synthetic final move failure'} Microsoft.PowerShell.Management\\Move-Item -LiteralPath $LiteralPath -Destination $Destination }; "
+    elif failure_stage == "locked_cleanup":
+        fault = "function ConvertTo-Json { param([Parameter(ValueFromPipeline=$true)]$InputObject, [int]$Depth) process { $global:heldFile = [IO.File]::Open($InputObject.Target, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None); throw 'synthetic receipt failure with locked target' } }; "
+    else:
+        fault = "function ConvertTo-Json { throw 'synthetic receipt failure' }; "
     command = (
         fault
         + " & "
@@ -128,7 +130,15 @@ def test_connector_failure_rolls_back_and_removes_only_its_staged_file(tmp_path,
     )
     assert result.returncode == 2 and original.read_bytes() == b"previous toolkit preserved"
     assert not list(original.parent.glob("*.tmp"))
-    assert not (docs / "Power BI Desktop/Custom Connectors/ResultsToolkit.mez").exists()
+    target = docs / "Power BI Desktop/Custom Connectors/ResultsToolkit.mez"
+    if failure_stage == "locked_cleanup":
+        assert target.read_bytes() == package.read_bytes()
+        assert "could not be inspected or removed; retained backups:" in result.stderr
+    elif failure_stage == "receipt_same_folder":
+        assert target.read_bytes() == b"previous toolkit preserved"
+    else:
+        assert not target.exists()
+    assert "Connector installation failed:" in result.stderr
     assert (tmp_path / "backup/0-ResultsToolkit.mez").read_bytes() == original.read_bytes()
 
 

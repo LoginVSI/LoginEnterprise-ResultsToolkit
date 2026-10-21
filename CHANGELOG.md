@@ -24,7 +24,7 @@
 ### 20 October practical acceptance
 
 - Add owner-authorized MIT license and package license metadata.
-- Add a user-scoped, backed-up single connector installer with explicit folder choice and no policy changes.
+- Add a user-scoped, backed-up single connector installer with explicit folder choice and no policy changes. Recovery continues when inspecting a newly placed file fails, preserves backup locations and returns a failure status.
 - Fix the owner-demonstrated live table-type failure by retaining required-column errors rather than applying UseNull.
 - Add editable finite report refinement and accurate selected-report opening instructions.
 - Record project-specific snapshot/live owner acceptance, published first article and remaining runtime/platform limits.
