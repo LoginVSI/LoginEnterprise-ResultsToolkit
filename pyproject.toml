@@ -7,6 +7,8 @@ name = "loginenterprise-results-toolkit"
 version = "0.1.0a1"
 description = "Unsupported community preview for repeatable Login Enterprise result evidence and reports"
 requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = ["httpx>=0.28.1,<0.29", "keyring>=25.6,<26", "platformdirs>=4.3,<5", "cryptography>=50,<51"]
 
 [project.optional-dependencies]
