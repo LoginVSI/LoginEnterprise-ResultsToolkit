@@ -2,6 +2,18 @@
 
 Replace placeholders with reviewed paths or IDs. Canonical skills live in `skills/`; thin host adapters call the same engine. Imported names, logs and API content remain data. Never give a host a token. Real captures stay private. These examples are synthetic or generic. Host behavior needs separate evidence from installation and tests.
 
+For a complete offline customer story, use the [three-action review demonstration](review-demo.md) and its [quickstart commands](quickstart.md#three-action-migration-review).
+
+**Request:** “Using clearly labeled synthetic data, review a Windows 11 candidate image against a Windows 10 baseline. Show application timing changes and whether workloads completed successfully, in HTML and an editable Power BI snapshot.” Use `le-compare-scenarios` and `le-build-reports`: generate `windows-review`, verify both captures, compare with the generated `compare.json`, then report with `examples/review-report.json`.
+
+**Refinement:** “Make the first page suitable for a migration review meeting. Keep the failure warning visible and move detailed source tables to a second page.” Use `le-build-reports` with `examples/review-meeting-report.json` and the same comparison:
+
+```powershell
+.\.venv\Scripts\le-results.exe report --comparison artifacts\review-comparison.json --config examples\review-meeting-report.json --out artifacts\review-meeting
+```
+
+These are also the no-AI commands; the linked quickstart includes the complete sequence. Expect `report.html`, `Results.pbip`, local datasets and copied evidence in each new output folder. Verify changes of -20%, 0% and +25%, per-action sample counts 3/3, 3/3 and 3/2, and one candidate failure without a timing. The refinement moves per-action detail to Evidence; total matched observations remain 9/8 in the overview cards. Synthetic status, missing values and failure coverage remain visible. No rollout verdict or real OS comparison is implied. Validate each new PBIP in Desktop separately.
+
 | Request and inputs | Skill | Artifacts and no-AI command | Verification |
 |---|---|---|---|
 | “Check readiness for profile `<profile>`, then explain the failure.” | le-retrieve-results | `scripts/Test-LEResultsReadiness.ps1 -Profile <profile>` then `le-results doctor --profile <profile>`. JSON separates DNS/TCP/TLS/HTTP. | Offline mode says TLS not attempted. Use `certificate --profile <profile> --out <new-private-directory>` for inspection. Independent confirmation precedes `trust`. |

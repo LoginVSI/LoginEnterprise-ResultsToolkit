@@ -1,5 +1,7 @@
 # Start with a synthetic comparison
 
+Want a migration-review presentation with three actions and visible failure coverage? Jump to the [three-action review](#three-action-migration-review) after installing the toolkit below.
+
 Use Python 3.11 or newer. Native Windows Python 3.14.8 is the locally exercised runtime. Hosted platform checks are tracked in progress.md. Installation downloads dependencies; the walkthrough itself makes no appliance requests and needs no AI subscription.
 
 In a fresh checkout of the preview branch, use PowerShell:
@@ -25,6 +27,23 @@ For a security-agent example, use a different destination:
 ```powershell
 .\.venv\Scripts\le-results.exe demo --scenario security-agent --out artifacts\security-agent
 ```
+
+## Three-action migration review
+
+For a meeting-ready example with faster, unchanged and slower actions, follow the [three-action review walkthrough](review-demo.md). It uses `demo --scenario windows-review`, explicit synthetic roles and the same comparison for HTML and editable Power BI snapshots. One failed execution has no timing record.
+
+After installation above, run these commands into new directories:
+
+```powershell
+.\.venv\Scripts\le-results.exe demo --scenario windows-review --out artifacts\review-input
+.\.venv\Scripts\le-results.exe verify artifacts\review-input\baseline
+.\.venv\Scripts\le-results.exe verify artifacts\review-input\candidate
+.\.venv\Scripts\le-results.exe compare --baseline artifacts\review-input\baseline --candidate artifacts\review-input\candidate --config artifacts\review-input\compare.json --out artifacts\review-comparison.json
+.\.venv\Scripts\le-results.exe report --comparison artifacts\review-comparison.json --config examples\review-report.json --out artifacts\review-overview
+.\.venv\Scripts\le-results.exe report --comparison artifacts\review-comparison.json --config examples\review-meeting-report.json --out artifacts\review-meeting
+```
+
+Open each folder's `report.html`; `Results.pbip` is the editable local snapshot. The meeting configuration moves per-action sample detail to Evidence while retaining total matched observations (9 baseline / 8 candidate), workload coverage and the failure warning on the overview. Neither configuration establishes a Windows performance conclusion. Preserve Desktop edits and use a new folder for every regeneration.
 
 ## Add an appliance
 

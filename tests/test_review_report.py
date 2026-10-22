@@ -3,6 +3,7 @@
 import copy
 import json
 from fractions import Fraction
+from pathlib import Path
 
 import pytest
 
@@ -59,8 +60,13 @@ def test_three_actions_reconcile_independent_raw_arithmetic_and_absent_timing(tm
 
 def test_review_and_refinement_bind_same_numeric_data_and_supported_local_model(tmp_path):
     result = example(tmp_path)
-    build_report(result, tmp_path / "report", CONFIG)
-    build_report(result, tmp_path / "refined", {**CONFIG, "overview_table": False})
+    examples = Path(__file__).resolve().parents[1] / "examples"
+    for config_name, output in [
+        ("review-report.json", "report"),
+        ("review-meeting-report.json", "refined"),
+    ]:
+        config = json.loads((examples / config_name).read_text())
+        build_report(result, tmp_path / output, config)
     for name in ("Comparison", "Coverage", "ReviewTiming", "ReviewCoverage", "ReviewCards"):
         assert (tmp_path / f"report/data/{name}.json").read_bytes() == (
             tmp_path / f"refined/data/{name}.json"
@@ -89,6 +95,12 @@ def test_review_and_refinement_bind_same_numeric_data_and_supported_local_model(
     assert not (
         tmp_path / "refined/Results.Report/definition/pages/comparison/visuals/samples"
     ).exists()
+    for output in ("report", "refined"):
+        text = (tmp_path / output / "report.html").read_text(encoding="utf-8")
+        assert text.count("Means describe available retained observations") == 1
+        assert "Matched timings | B / C" in text and ">9 / 8<" in text
+        assert "Failures B / C: 0 / 1" in text
+        assert "Candidate n" in text  # Per-action detail remains in Evidence.
 
 
 def test_review_legacy_coverage_and_tampering_are_distinct(tmp_path):
@@ -179,6 +191,7 @@ def test_baseline_failure_warning_escaping_and_native_warning_binding(tmp_path):
     text = (tmp_path / "both/report.html").read_text(encoding="utf-8")
     assert "Failures B / C: 1 / 1" in text and "&lt;review&gt;" in text
     assert "Engineer's <review>" not in text
+    assert "<h1>SYNTHETIC | Engineer&#x27;s &lt;review&gt;</h1>" in text
     assert lit("Engineer's")["expr"]["Literal"]["Value"] == "'Engineer''s'"
     warnings = (
         tmp_path / "both/Results.Report/definition/pages/evidence/visuals/warnings/visual.json"

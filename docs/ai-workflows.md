@@ -15,6 +15,8 @@ The adapters point to the canonical workflow within the checkout. They do not co
 
 Example requests:
 
+For the synthetic `windows-review` customer story, use the [three-action walkthrough](review-demo.md) and [prompt gallery](prompt-gallery.md). The ready-to-use `examples/review-meeting-report.json` sets `overview_table: false`: per-action sample detail moves to Evidence while total observation cards and the failure warning stay on the overview.
+
 The [prompt gallery](prompt-gallery.md) specifies inputs, artifacts, skills, no-AI commands and verification for readiness, selection, export, comparisons, reports and refinement. Installing an adapter does not prove host behavior. Current Codex use is separate evidence from Claude audit and Desktop execution.
 
 - “Find a recent completed Load run, record its ID, and export it to a private capture. Explain missing data and completeness.”

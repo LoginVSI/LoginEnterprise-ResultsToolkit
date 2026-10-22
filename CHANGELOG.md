@@ -2,6 +2,9 @@
 
 ## Community preview, unreleased
 
+- Link the three-action synthetic review directly from quickstart and prompt gallery, with a ready-to-use meeting refinement. Keep customized HTML headings explicitly synthetic and remove repeated interpretation text from the refined view. Aggregate observation cards and failure coverage remain visible.
+- Record a successful fresh-Claude synthetic customer workflow separately from the previously accepted Desktop meeting project. New workflow projects remain Desktop-pending.
+
 - Record 22 October owner acceptance of the refined synthetic meeting snapshot: successful refresh, persistent edit/save/close/reopen and matching HTML/Power BI timing and coverage review. Other projects and live/runtime claims remain separate.
 
 - Add a reproducible three-action synthetic review and an opt-in 16:9 HTML/Power BI presentation with explicit failure and timing coverage. Configuration-only refinement preserves the verified data and moves details to a second page. Refined-project acceptance is recorded on 22 October; other generated projects remain separate.

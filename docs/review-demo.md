@@ -26,7 +26,13 @@ The summary labels show matched metric samples, execution failures and execution
 
 ## Refine the first page
 
-Copy `examples/review-report.json`, set a meeting-specific title and change `overview_table` to `false`. Keep the remaining fields. Run `report` with that specification into a new folder. The overview keeps the charts, full-workload coverage and failure warning; sample-count detail and retained source tables remain on the Evidence page. The HTML moves the sample-count table into its secondary evidence section. Comparison and presentation datasets remain identical across both versions.
+Use the ready-to-use [meeting configuration](../examples/review-meeting-report.json), which sets `overview_table` to `false`. Customize its title if needed; synthetic review headings retain their provenance label independently of that title. Run into a new folder:
+
+```powershell
+le-results report --comparison artifacts/review-comparison.json --config examples/review-meeting-report.json --out artifacts/review-meeting
+```
+
+This refinement moves per-action sample detail, not all observation counts. Total matched observations remain in the overview cards (9 baseline / 8 candidate in this fixture). The overview keeps the charts, full-workload coverage and failure warning; sample-count detail and retained source tables remain on the Evidence page. The HTML moves the sample-count table into its secondary evidence section. Comparison and presentation datasets remain identical across both versions.
 
 On 22 October, the owner confirmed the refined synthetic meeting project's successful refresh and an edit that persisted through save/close/reopen without errors. The owner reported visual review of HTML and both Power BI pages, with all three timing comparisons, observation counts and failure coverage agreeing. That is acceptance of the refined meeting snapshot, not the initial overview PBIP or every configuration/build. Keep the edited project intact and generate future refinements into new directories.
 

@@ -4,11 +4,17 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Fresh Claude customer workflow and presentation follow-up, 2026-10-22
+
+A fresh Claude customer-workflow exercise completed synthetic capture verification, comparison, initial reporting and configuration-only refinement on an already-configured workstation. Independent source arithmetic and all 15 presentation datasets agreed across the two generated variants; official schemas and six external M queries passed for each. No appliance requests or Desktop operations were performed. These new PBIPs remain Desktop-pending, separate from the accepted meeting project below. This is not clean-machine installation evidence or a code audit.
+
+Confirmed onboarding findings now have a direct quickstart/gallery path and a ready-to-use meeting specification with exact commands. Refined HTML shows the interpretation paragraph once, and customized synthetic HTML headings retain an explicit synthetic prefix; native titles already retain their synthetic badge. Per-action detail moves to Evidence while total observation cards, failures and calculations remain unchanged. Existing generated outputs and the owner-edited project were preserved. Two separate final blog reviews and actual tour capture remain pending.
+
 ### Synthetic meeting snapshot owner acceptance, 2026-10-22
 
 The owner confirmed successful refresh of the refined synthetic meeting snapshot, followed by an edit, save, close and reopen with the change preserved and no errors. The owner also reported visual review of the HTML and both Power BI pages, with all three timing comparisons, observation counts and failure coverage agreeing. This is project-specific owner acceptance, separate from schema/parser checks and the earlier retained-data projects. It does not establish acceptance of the initial overview PBIP, other generated configurations/builds, a refreshable connector or fresh-data ingestion.
 
-The edited project is preserved and must not be regenerated. No Desktop operation was performed to record this update. Private Blog B/socials and capture guidance now follow this accepted demonstration; original drafts and evidence remain preserved. A fresh Claude customer-workflow exercise and two separate final blog reviews have prepared handoffs and remain pending. No Storylane recording, publication, release or main merge is claimed.
+The edited project is preserved and must not be regenerated. No Desktop operation was performed to record this update. Private Blog B/socials and capture guidance now follow this accepted demonstration; original drafts and evidence remain preserved. At this owner-acceptance checkpoint, a fresh Claude customer-workflow exercise and two separate final blog reviews had prepared handoffs; the later workflow result is recorded above. The two blog reviews remain pending. No Storylane recording, publication, release or main merge is claimed.
 
 ### Synthetic engineering review, 2026-10-21
 
