@@ -4,6 +4,8 @@ Power BI is the first reporting adapter, not the engine's only destination. The 
 
 The opt-in [engineering review layout](review-demo.md) adds a 16:9 overview with native summary cards, source-unit timing bars, signed percentage changes and a separate evidence page. It uses the same verified comparison as the portable HTML. New layout acceptance remains separate from the earlier owner-tested projects.
 
+On 22 October, the owner accepted the refined synthetic meeting snapshot: refresh succeeded, an edit persisted through save/close/reopen without errors, and visual review of HTML and both Power BI pages agreed on timings, observation counts and failure coverage. Preserve that edited project. This acceptance applies to that snapshot only; other generated projects/builds, live acquisition and forced-offline network isolation need their own evidence.
+
 ## Snapshot acceptance
 
 `report-capture --capture PATH --out NEW_DIRECTORY` creates a finite editable source report for one capture. It keeps partial endpoint outcomes without inventing baseline/candidate scenarios. Reconcile source rows, session/execution relationships and failures. Timer units remain unconfirmed unless separately established.

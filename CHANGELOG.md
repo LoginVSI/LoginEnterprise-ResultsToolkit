@@ -2,7 +2,9 @@
 
 ## Community preview, unreleased
 
-- Add a reproducible three-action synthetic review and an opt-in 16:9 HTML/Power BI presentation with explicit failure and timing coverage. Configuration-only refinement preserves the verified data and moves details to a second page. New Desktop layout acceptance remains pending.
+- Record 22 October owner acceptance of the refined synthetic meeting snapshot: successful refresh, persistent edit/save/close/reopen and matching HTML/Power BI timing and coverage review. Other projects and live/runtime claims remain separate.
+
+- Add a reproducible three-action synthetic review and an opt-in 16:9 HTML/Power BI presentation with explicit failure and timing coverage. Configuration-only refinement preserves the verified data and moves details to a second page. Refined-project acceptance is recorded on 22 October; other generated projects remain separate.
 - Update the development-only pypdf lock to 6.21.1 from official hashes after CI identified newly reported vulnerabilities.
 
 - Addressed independent Claude findings with session-window coverage, per-result timer-only gates, pinned trust material, strict TLS across supported runtimes, explicit metric identity and role-scoped snapshot relationships.
