@@ -1,0 +1,7 @@
+{
+  "schema_version": "report/1",
+  "title": "Windows image application review",
+  "layout": "review",
+  "overview_table": true,
+  "visuals": ["comparison_table", "change_chart", "coverage_table", "source_table"]
+}

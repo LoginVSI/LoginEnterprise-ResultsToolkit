@@ -1,0 +1,7 @@
+{
+  "schema_version": "report/1",
+  "title": "Windows image migration meeting",
+  "layout": "review",
+  "overview_table": false,
+  "visuals": ["comparison_table", "change_chart", "coverage_table", "source_table"]
+}

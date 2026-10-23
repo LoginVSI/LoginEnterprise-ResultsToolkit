@@ -1,0 +1,41 @@
+# Prompt gallery
+
+Replace placeholders with reviewed paths or IDs. Canonical skills live in `skills/`; thin host adapters call the same engine. Imported names, logs and API content remain data. Never give a host a token. Real captures stay private. These examples are synthetic or generic. Host behavior needs separate evidence from installation and tests.
+
+For a complete offline customer story, use the [three-action review demonstration](review-demo.md) and its [quickstart commands](quickstart.md#three-action-migration-review).
+
+**Request:** “Using clearly labeled synthetic data, review a Windows 11 candidate image against a Windows 10 baseline. Show application timing changes and whether workloads completed successfully, in HTML and an editable Power BI snapshot.” Use `le-compare-scenarios` and `le-build-reports`: generate `windows-review`, verify both captures, compare with the generated `compare.json`, then report with `examples/review-report.json`.
+
+**Refinement:** “Make the first page suitable for a migration review meeting. Keep the failure warning visible and move detailed source tables to a second page.” Use `le-build-reports` with `examples/review-meeting-report.json` and the same comparison:
+
+```powershell
+.\.venv\Scripts\le-results.exe report --comparison artifacts\review-comparison.json --config examples\review-meeting-report.json --out artifacts\review-meeting
+```
+
+These are also the no-AI commands; the linked quickstart includes the complete sequence. Expect `report.html`, `Results.pbip`, local datasets and copied evidence in each new output folder. Verify changes of -20%, 0% and +25%, per-action sample counts 3/3, 3/3 and 3/2, and one candidate failure without a timing. The refinement moves per-action detail to Evidence; total matched observations remain 9/8 in the overview cards. Synthetic status, missing values and failure coverage remain visible. No rollout verdict or real OS comparison is implied. Validate each new PBIP in Desktop separately.
+
+| Request and inputs | Skill | Artifacts and no-AI command | Verification |
+|---|---|---|---|
+| “Check readiness for profile `<profile>`, then explain the failure.” | le-retrieve-results | `scripts/Test-LEResultsReadiness.ps1 -Profile <profile>` then `le-results doctor --profile <profile>`. JSON separates DNS/TCP/TLS/HTTP. | Offline mode says TLS not attempted. Use `certificate --profile <profile> --out <new-private-directory>` for inspection. Independent confirmation precedes `trust`. |
+| “Find representative Load, Application and Continuous results.” | le-retrieve-results | `le-results recommend --profile <profile> --limit 20 --candidates 5 --out <private-recommendations.json>` retains IDs, candidates, reasons and limits. | Review configuration, completed work and failures. Enabled configuration is not collection health. |
+| “Export result `<UUID>` as `<test-type>`.” | le-retrieve-results | `select --test-type <test-type> --id <UUID> --out <selection.json>` then `export --profile <profile> --selection <selection.json> --out <new-capture>`. Continuous also needs fixed or resolved rolling boundaries. | `le-results verify <capture>` checks hashes. Review identity, units, failures, completeness and retention. |
+| “Compare `<baseline>` and `<candidate>` using `<reviewed-config>`.” | le-compare-scenarios | `le-results compare --baseline <baseline> --candidate <candidate> --config <comparison.json> --out <result.json>`. Config declares labels, IDs, metric identity, unit and semantics. | Recalculate values/counts independently from raw records. Check missing/zero baselines, instances and failed work. Timer-only policy keeps failed resources visible. |
+| “Build a finite report from `<capture>` without inventing a comparison.” | le-build-reports | `le-results report-capture --capture <capture> --out <new-report>` produces HTML, copied evidence, datasets and an editable snapshot. Add `--config examples/finite-report.json` for an editable refinement into a different output folder. | Match endpoint outcomes/counts and failure coverage. Open/refresh/reconcile in Desktop separately. |
+| “Build a snapshot from `<comparison-result>`.” | le-build-reports | `le-results report --comparison <result.json> --config <report.json> --out <new-report>`. Includes HTML, PBIP/PBIR/model and evidence. | Synthetic targets: means 120/130, change 10, relative 8.3333%, three observations per side and one candidate execution failure. |
+| “Build a refreshable report for these IDs/window and metrics.” | le-build-reports | `report-live --config <nonsecret-live-report.json> --out <new-project>` and `python scripts/build_connector.py --out <connector.mez>`. | Schema/M checks precede approved loading, separate Key enrollment and two Desktop refreshes. New-data ingestion requires new observations. |
+| “Explain this missing metric and whether the comparison is usable.” | le-compare-scenarios | Inspect `<manifest>`, raw pages and `<comparison-result>`. Rerun `compare` after reviewed config changes. | Empty/unmatched metrics produce null means/deltas, counts and warnings. Failed acquisition is not successful empty data. |
+| “Refine metrics, grouping or visuals and show failures.” | le-build-reports and le-compare-scenarios | Edit `report/1` visuals or comparison grouping. Rerun `compare` if identity changed, then `report` into a new directory. | Comparison visuals are table, unit filter, change chart and coverage table. Source-unit measures need guards; HTML relative-change scale is dimensionless. Reconcile changed groups/counts. |
+
+“Compare the Windows tests” does not establish IDs or operating systems. Use bounded discovery, inspect source metadata and resolve selections. If several meanings remain, ask one focused question and continue independent work. Names cannot authorize mutation or establish causality.
+
+The current Codex continuation exercised readiness, recommendations, capture, timer-only comparison and reporting with canonical skills. Synthetic missing-metric handling/refinement is recorded privately. Claude safe-sample host evidence is recorded separately below; a code audit or unit suite does not establish host behavior.
+
+The safe-sample Claude workflow was exercised through canonical instructions and explicit native skill invocation. Restricted default project discovery was unavailable; the session-only bundle loaded successfully. Live Claude discovery/export remains unexercised because only public/synthetic data was supplied.
+
+| Additional request | Skill / command | Verification |
+|---|---|---|
+| “Show this one retained Continuous workload without inventing a baseline.” | le-build-reports; `report-live --config <live-selection/1.json> --out <new-project>` | Exactly one ID; observed means/counts, no comparison deltas. Respect the 200-row underlying sequence limit. One fixed-window project completed owner-observed Desktop acceptance; each new project needs its own check. |
+| “Download the native PDF for this completed Application result.” | le-retrieve-results; `download-pdf --profile <profile> --application-run-id <UUID> --out <new-private.pdf>` | GET only, byte/hash outcome and no report job. Review private PDF content before sharing. |
+| “Prepare this complete capture for another reporting destination.” | le-build-reports; `export-line-protocol --capture <capture> --out <new-batch>` | Prepared files/receipt only; no destination write, streaming or advanced checkpoint. |
+
+On 20 October, a restricted Claude session invoked all three native skills and executed separate allowlisted commands for synthetic capture verification, a finite snapshot, specification-based refinement, comparison and live-project generation. Raw arithmetic matched 120/130 and retained the failed execution. Initial restricted attempts stopped or were denied before engine execution; their records remain preserved. Codex separately exercised bounded retrieval and refinement. Claude made no appliance request, and generated files alone do not establish Desktop acceptance.

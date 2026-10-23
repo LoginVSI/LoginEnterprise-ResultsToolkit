@@ -1,0 +1,5 @@
+{
+  "schema_version": "report/1",
+  "title": "Synthetic Windows migration comparison",
+  "visuals": ["unit_filter", "comparison_table", "change_chart", "coverage_table"]
+}

@@ -1,0 +1,20 @@
+# API and reference evidence
+
+The owner-supplied v8-preview export has `info.version: 8.0-preview` and server `/publicApi`. Selected routes therefore use `/publicApi/v8-preview/...`. v7's `info.version: 7.0` is reference only. The OpenAPI format version is not the API adapter version. Full sanitized copies, original hashes, sanitized hashes and transformation notes are in [docs/api](api/).
+
+The adapter uses GET only and permits a small set of discovery/result/configuration endpoints. It cannot create, modify, schedule, start or delete tests. Retrieval uses count/offset/includeTotalCount/direction envelopes. Unknown/null envelopes, wrong offsets, changing totals and truncated pages fail the capture. A later page failure leaves partial raw evidence and a failing command, never a successful empty dataset. Without totalCount, a short page terminates paging; this contract behavior still requires live confirmation for the target appliance.
+
+v8-preview moves execution/session measurement endpoints compared with v7. Historical configuration retrieval requests `include=testRunConfigurationSnapshot`; the schema's returned property is `testConfigurationSnapshot`. That difference is intentional and contract-tested. Collector definitions fetched through a current test are labeled current. Supplied snapshots do not establish live product/version behavior.
+
+## References reviewed
+
+| Reference | Version or commit | Use and limitations |
+|---|---|---|
+| Login Enterprise guide | September 2026, 901 pages, owner-supplied private PDF | Prior full ChatGPT review completed. Local sections consulted: 259 retention; 449 API; 524 Desktop Load and figure; 573/588 metrics; 859 SetTimer. Design evidence only. |
+| [LE-PBI-Connector](https://github.com/LoginVSI/LE-PBI-Connector/tree/42dc9ae85daca1faed11f17907f200b59438c5fc) | 42dc9ae85daca1faed11f17907f200b59438c5fc | Source/navigation, documentation and PBIT definitions reviewed: 34 tables including calculated/automatic date tables, M partitions, numeric measures and nine report pages. Uses v7-preview/token parameter and error-to-empty paths. No LICENSE at this commit; no source/assets copied. Template runtime not independently validated. |
+| [PatchValidationGate](https://github.com/LoginVSI/LoginEnterprise-PatchValidationGate/tree/9323a78ef1077374f1c58587bf910a77cfaeec98) | 9323a78ef1077374f1c58587bf910a77cfaeec98 | Reviewed practices/API evidence and fixture/test patterns. Its appliance evidence belongs to that project; mutations and deployment workflows do not belong in this toolkit. |
+| [Microsoft PBIP overview](https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview) and [report format](https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-report) | Consulted 2026-10-09 | PBIR supports external editing and public schemas; PBIR-Legacy is excluded. Actual installed build acceptance remains separate. |
+| [Power Query authentication](https://learn.microsoft.com/en-us/power-query/handling-authentication) and [resource paths](https://learn.microsoft.com/en-us/power-query/handling-resource-path) | Consulted 2026-10-09 | Native Key enrollment, Extension.CurrentCredential and ManualCredentials; origin scopes credentials, configuration is excluded from the credential path. |
+| [Session metrics](https://support.loginvsi.com/hc/en-us/articles/9776492249884-Session-Metrics) and [EUX/VSImax](https://support.loginvsi.com/hc/en-us/articles/4408717958162-Login-Enterprise-EUX-score-and-VSImax) | Consulted 2026-10-09 | Metric/score context; no independent EUX implementation or live proof inferred. |
+
+Private inputs and reference clones remain ignored. Public snapshots remove examples/contact metadata and replace absolute URLs throughout, including environment-specific logo URLs. Reference-graph and version/hash checks run offline. The large guide remains private. API documentation redistribution is limited to the owner-authorized sanitized snapshots; this does not choose licensing terms for the toolkit.

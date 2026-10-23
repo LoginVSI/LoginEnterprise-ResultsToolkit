@@ -1,0 +1,39 @@
+# Application review demonstration
+
+This offline workflow produces a self-contained HTML comparison and an editable local-file Power BI snapshot from the same verified comparison. No appliance, connector, credential or AI host is required. Power BI Desktop is needed only to open and accept the PBIP.
+
+The `windows-review` fixture declares synthetic Windows 10 baseline and Windows 11 candidate roles. They are not verified operating systems or benchmark results. Three named actions have timing means of 1,000/800 ms, 500/500 ms and 2,000/2,500 ms. The engine calculates changes of -20%, 0% and +25%. Milliseconds are explicitly authored fixture units, not an inference about API timers.
+
+Each role has one session and nine executions. The candidate has eight successful executions and one execution that ended with errors without a timing record. Export therefore has two timing observations against three on the baseline. No null or zero duration is fabricated in the source. `fixture.json` explains the authored inputs and expected observation design. A complete synthetic capture does not mean every execution succeeded.
+
+Use the installed `le-results` command, or invoke `.venv/Scripts/python.exe -m le_results.cli` directly without activation:
+
+```powershell
+le-results demo --scenario windows-review --out artifacts/review-input
+le-results verify artifacts/review-input/baseline
+le-results verify artifacts/review-input/candidate
+le-results compare --baseline artifacts/review-input/baseline --candidate artifacts/review-input/candidate --config artifacts/review-input/compare.json --out artifacts/review-comparison.json
+le-results report --comparison artifacts/review-comparison.json --config examples/review-report.json --out artifacts/review-overview
+```
+
+Use new output directories. `report.html` embeds its styling and charts. `Results.pbip`, its Report and SemanticModel directories, local JSON datasets and retained evidence form the editable snapshot bundle. Move the whole bundle together; generated M file paths are absolute and must be regenerated or reviewed if relocated. Never rename a PBIP to PBIT.
+
+The review layout uses native cards, bar charts, tables and textboxes. It accepts 1-3 duration actions with one shared source unit and distinct group labels. Absolute timing bars share that source unit; the signed change chart uses dimensionless percentage points with a zero reference. Underlying values remain numeric and unrounded. The native percent measure formats 25 as 25%, not 2,500%. No score or rollout verdict is calculated.
+
+This compact layout requires complete acquisition, known execution states and resolved timing links. Use the standard evidence report for partial/timer-only captures or unknown relationships. If any selected timing lacks an execution link, the general comparison's no-retained-timing counter is null, not a claim that every execution lacks measurements. Compact titles are limited to 60 characters and action/group labels to 20; full identity remains in retained evidence. Native warnings are available on the Evidence page. Both baseline and candidate failures remain visible. Check native display formatting for each new project.
+
+The summary labels show matched metric samples, execution failures and executions with no retained timing. Matched sample counts sum configured metric groups; overlapping metric definitions can count the same observation more than once. Full-workload coverage is separate from those matches. An execution with no timing does not establish that a timing was expected outside this explicitly authored fixture. Successful-execution counts require source state `ended`; `endedWithErrors` remains failed. Observations are not independent sessions or devices.
+
+## Refine the first page
+
+Use the ready-to-use [meeting configuration](../examples/review-meeting-report.json), which sets `overview_table` to `false`. Customize its title if needed; synthetic review headings retain their provenance label independently of that title. Run into a new folder:
+
+```powershell
+le-results report --comparison artifacts/review-comparison.json --config examples/review-meeting-report.json --out artifacts/review-meeting
+```
+
+This refinement moves per-action sample detail, not all observation counts. Total matched observations remain in the overview cards (9 baseline / 8 candidate in this fixture). The overview keeps the charts, full-workload coverage and failure warning; sample-count detail and retained source tables remain on the Evidence page. The HTML moves the sample-count table into its secondary evidence section. Comparison and presentation datasets remain identical across both versions.
+
+On 22 October, the owner confirmed the refined synthetic meeting project's successful refresh and an edit that persisted through save/close/reopen without errors. The owner reported visual review of HTML and both Power BI pages, with all three timing comparisons, observation counts and failure coverage agreeing. That is acceptance of the refined meeting snapshot, not the initial overview PBIP or every configuration/build. Keep the edited project intact and generate future refinements into new directories.
+
+Schema checks, M parsing, HTML rendering and owner-observed Desktop behavior remain separate evidence. A local snapshot requires no toolkit connector. This acceptance does not establish live refresh, rolling observations, forced-offline network isolation or Service/gateway behavior. Storylane capture and separate final editorial reviews remain distinct from runtime acceptance.

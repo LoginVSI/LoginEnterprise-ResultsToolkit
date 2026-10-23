@@ -1,0 +1,38 @@
+# Customer workflows
+
+Use the installed `le-results` command or invoke `PATH_TO_ENV/python -I -m le_results.cli` directly. Activation is optional. The [quickstart](quickstart.md) installs the locks and toolkit; the [PowerShell example](../examples/customer-workflow.ps1) is editable. Replace fictional origins/UUIDs and use a new private output directory each time.
+
+| Task | Inputs / command | Output and verification |
+|---|---|---|
+| Bootstrap / readiness | Windows `scripts/Test-LEResultsReadiness.ps1 -Profile lab`; `le-results doctor --profile lab --offline` | Runtime/provider/profile/write diagnostics. Offline does not attempt TLS. Missing/broken Python is explained by the bootstrap. |
+| Verified connectivity | `le-results doctor --profile lab` | DNS/TCP/verified TLS/API outcomes. Follow [approved trust setup](troubleshooting.md); never bypass verification. |
+| Representative discovery | `le-results recommend --profile lab --limit 100 --candidates 5 --continuous-candidates 40 --out .private/recommendations.json` | At most 100 metadata records/model, 5 Load/Application details and 40 Continuous definitions, 250 requests/5 pages per sequence/300 seconds. Probes retain failures and sampled timestamps. This is a bounded subset, not an inventory. |
+| Explicit selection | `le-results select --test-type LoadTest --id <completed-UUID> --out .private/selection.json` | Reviewed UUIDs, test type and scenario. Continuous requires test IDs plus both fixed boundaries or `--rolling-hours`. |
+| Capture / export | `le-results export --profile lab --selection .private/selection.json --max-requests 200 --max-pages 10 --page-size 100 --timeout 20 --deadline 300 --out .private/capture` | Immutable raw pages, normalized JSON/CSV, dictionary, hashes and endpoint statuses. Partial/failed export exits 2. `verify .private/capture` verifies hashes; successful hash verification does not make partial data complete. |
+| Comparison | `le-results compare --baseline .private/baseline --candidate .private/candidate --config .private/comparison.json --out .private/comparison-result.json` | Explicit roles/IDs/metric identity/units/semantics. Review completed work, failures, instances and missing values. Recalculate selected raw sums/counts independently. |
+| Finite selected report | `le-results report-capture --capture .private/capture --out .private/finite` | HTML, timer/resource tables, copied evidence and editable local-file snapshot. Numeric observations stay numeric; no pooled source-unit average or invented comparison. |
+| Comparison snapshot | `le-results report --comparison .private/comparison-result.json --config examples/report.json --out .private/snapshot` | HTML/PBIP/PBIR/model/data/M. Source evidence/configuration is rechecked. Desktop acceptance remains separate. |
+| Single-source refreshable project | Copy `examples/continuous-selected-report.json`, resolve its one existing ID, window and metric; `le-results report-live --config .private/live-selection.json --out .private/live-selected` | `live-selection/1` produces `acquisition/2`, observed mean/count/missing and failures, without baseline/candidate deltas. Exactly one ID prevents implicit pooling. |
+| Comparison refreshable project | `le-results report-live --config .private/live-report.json --out .private/live-comparison` | `live-report/1` produces `acquisition/1`; explicit distinct baseline/candidate IDs, at most four total. Separate Power Query Key/trust, runtime refresh and reconciliation are required. |
+| Existing native Application PDF | `le-results download-pdf --profile lab --application-run-id <completed-Application-UUID> --max-mib 16 --out .private/application.pdf` | Documented v8-preview GET, no request body/report job. Identity/type/completion checked. Default 16 MiB, maximum 64 MiB, 4 requests/90 seconds, redirects refused. Returns byte count/hash. Keep vendor PDF private until reviewed. |
+| Optional time-series file | `le-results export-line-protocol --capture .private/capture --max-records 10000 --out .private/line-protocol` | Finite files/receipt only; no database writes or advanced checkpoint. See [separate optional scope](timeseries.md). |
+
+Continuous recommendations compare full-definition state with timer/event/resource observations. Events/resources request explicit timestamp order; measurements have no sort-key parameter, so their one-record probe uses the server's default descending order and does not claim a verified latest observation. A months-old session start or modification date does not prove stopped collection. An enabled flag does not prove healthy collection. Failed probes or exhausted bounds make recommendations partial and exit 2 while retaining useful results. Resolve an existing ID if the bounded subset does not establish the requested workload; this workflow does not create or modify tests.
+
+Reports retain unknown units and current-versus-historical configuration. Empty resources are not zero CPU/memory. Resource `userSessionKey` is retained source identity; matching one captured session is evidence for that capture, not a universal host/device mapping. Numeric/text mixtures that cannot populate a numeric source column fail report generation for source review.
+
+`download-pdf` screens raw bytes for reflection of the enrolled credential; it does not inspect every compressed/encoded PDF text object. It never embeds credentials. An interrupted/new-file write can leave a partial artifact and reports failure; preserve it and retry a new path. The route's Swagger media type says `application/json` with binary format; the actual returned PDF was checked as PDF bytes. Multi-result aggregate/report-creation endpoints are outside this command. No native Load/Continuous PDF generation is claimed.
+
+Exit codes are 0 for an executed operation, 2 for diagnosis/acquisition/configuration failure and 130 for cancellation. Workload failure and acquisition completeness are separate: a complete capture can contain failed work. Unmatched metrics can produce a successful comparison operation with null means/deltas; inspect artifact coverage rather than the exit code alone.
+
+Manifests also record timer-to-execution relationship coverage: resolved, nullable and unresolved counts/IDs. A timer can refer to an execution outside the independently filtered execution window. That gap stays visible; acquisition can be complete while relationship coverage is incomplete. No missing execution is fabricated.
+
+## Refine a selected snapshot
+
+Use an editable finite `report/1` specification to choose source, resource and coverage tables. Keep the capture and generate a new output folder; preserve saved Desktop edits.
+
+```powershell
+le-results report-capture --capture artifacts/selected --config examples/finite-report.json --out artifacts/selected-refined
+```
+
+This has no invented baseline/candidate or delta. Unsupported visual/type inputs fail explicitly. For live loading, install one reviewed package with `powershell.exe -NoProfile -File scripts/Install-LEResultsConnector.ps1 -Package artifacts/ResultsToolkit.mez`; save/close Desktop first. `-DiagnoseOnly` reports file/export presence, not host loading. See Power BI guidance for build-specific folders and separate Key/trust.
