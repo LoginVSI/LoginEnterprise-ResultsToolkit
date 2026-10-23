@@ -4,6 +4,14 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Preview closeout review, 2026-10-23
+
+The final independent Claude factual/editorial review and the separate private writing-repository review of Blog B are complete. Material editorial findings were addressed in the final private article/social pack. That work adds no new product, Desktop or appliance validation. Blog B and socials remain unpublished; publication placeholders are retained. The supplied Storylane link is retained without a new tour audit or claim about its contents.
+
+The preview is ready for the owner-authorized merge once final-head checks pass. The closeout reviews packaging, MIT notices, public-content hygiene and runnable documentation against retained independent reviews and acceptance records. Final commit, merge and CI outcomes are recorded with PR #1. Existing generated reports and owner Desktop edits remain protected; this closeout performs no Desktop operation, connector installation or appliance request.
+
+Acceptance remains specific: read-only appliance retrieval/source reconciliation; owner-observed retained-data snapshot and fixed-window live projects; the owner-edited synthetic meeting project; and a separate fresh-Claude workflow whose new projects were not opened in Desktop. Fresh observations, rolling ingestion, broad negative Mashup fixtures, true standard-user/native non-Windows vault and ARM acceptance are not claimed. Service/gateway, streaming, incremental ingestion and other integrations remain follow-on work, not preview merge gates. Release/package publication and Blog B/social publication remain separate owner actions.
+
 ### Fresh Claude customer workflow and presentation follow-up, 2026-10-22
 
 A fresh Claude customer-workflow exercise completed synthetic capture verification, comparison, initial reporting and configuration-only refinement on an already-configured workstation. Independent source arithmetic and all 15 presentation datasets agreed across the two generated variants; official schemas and six external M queries passed for each. No appliance requests or Desktop operations were performed. These new PBIPs remain Desktop-pending, separate from the accepted meeting project below. This is not clean-machine installation evidence or a code audit.

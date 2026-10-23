@@ -4,7 +4,7 @@ Want a migration-review presentation with three actions and visible failure cove
 
 Use Python 3.11 or newer. Native Windows Python 3.14.8 is the locally exercised runtime. Hosted platform checks are tracked in progress.md. Installation downloads dependencies; the walkthrough itself makes no appliance requests and needs no AI subscription.
 
-In a fresh checkout of the preview branch, use PowerShell:
+In a fresh checkout of the repository, use PowerShell:
 
 ```powershell
 py -3.14 -m venv .venv

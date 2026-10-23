@@ -1,6 +1,6 @@
 # Preview compatibility and release readiness
 
-The branch and draft PR remain the review destination. No release or main merge is authorized by these checks. MIT is bundled by owner authorization. Final acceptance/merge/publication remain owner decisions.
+The reviewed implementation is being closed out through PR #1 under explicit owner authorization to merge after final checks pass. MIT is bundled. A merge does not publish a release or package, and those publication decisions remain separate. See [progress](progress.md) and the PR for final commit and CI evidence.
 
 | Contract / artifact | Version and compatibility boundary |
 |---|---|
@@ -20,7 +20,7 @@ Release gates:
 - MIT LICENSE and package metadata are bundled; preserve upstream reuse boundaries and notices. No unlicensed source/assets are copied.
 - Tests, lint/types, audits, packaging, Windows wrappers, report schemas and generated/connector M pass on final head; verify all CI jobs on that head.
 - Review public source/PR/release text for credentials, appliance identities, customer/internal context and personal paths. Ignore rules alone are insufficient.
-- Record actual snapshot local-file refresh/editable save, error/identity M fixtures, connector policy/Key/trust, two live refreshes and source reconciliation before claiming Desktop acceptance. New-data proof requires advancing source observations.
+- Record actual project-specific snapshot refresh/editable save, connector loading/Key/trust, two live refreshes and source reconciliation before claiming the corresponding Desktop acceptance. Broader error/identity M fixtures remain separate; schema parsing is not runtime proof. New-data proof requires advancing source observations.
 - Keep native vault, standard-user and untested architecture limits visible. Do not manufacture proof by changing accounts or policy.
 - Owner decides final merge/release/blog publication. Prepare artifacts and release notes first; keep preview unsupported and unpublished until those decisions.
 
