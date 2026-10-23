@@ -10,6 +10,8 @@ The final independent Claude factual/editorial review and the separate private w
 
 The preview is ready for the owner-authorized merge once final-head checks pass. The closeout reviews packaging, MIT notices, public-content hygiene and runnable documentation against retained independent reviews and acceptance records. Final commit, merge and CI outcomes are recorded with PR #1. Existing generated reports and owner Desktop edits remain protected; this closeout performs no Desktop operation, connector installation or appliance request.
 
+The first closeout CI run passed tests but stopped at new development-dependency audit findings. The development lock updates filelock to 4.2.1, pypdf to 6.21.2 and setuptools to 84.1.0 using official PyPI artifact hashes; optional development metadata is consistent. Runtime dependencies are unchanged. Final checks must pass without suppressing these findings before merge.
+
 Acceptance remains specific: read-only appliance retrieval/source reconciliation; owner-observed retained-data snapshot and fixed-window live projects; the owner-edited synthetic meeting project; and a separate fresh-Claude workflow whose new projects were not opened in Desktop. Fresh observations, rolling ingestion, broad negative Mashup fixtures, true standard-user/native non-Windows vault and ARM acceptance are not claimed. Service/gateway, streaming, incremental ingestion and other integrations remain follow-on work, not preview merge gates. Release/package publication and Blog B/social publication remain separate owner actions.
 
 ### Fresh Claude customer workflow and presentation follow-up, 2026-10-22

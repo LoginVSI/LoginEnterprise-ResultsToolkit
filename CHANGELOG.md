@@ -3,6 +3,7 @@
 ## Community preview, unreleased
 
 - Complete the preview closeout review and record both final Blog B reviews as complete. Keep project-specific acceptance, pending runtime/platform checks and optional integrations distinct. Merge authorization does not publish a release, package or article.
+- Resolve closeout CI audit findings with development-only filelock 4.2.1, pypdf 6.21.2 and setuptools 84.1.0 pins and official hashes. Runtime dependencies are unchanged; no advisory suppression is added.
 
 - Link the three-action synthetic review directly from quickstart and prompt gallery, with a ready-to-use meeting refinement. Keep customized HTML headings explicitly synthetic and remove repeated interpretation text from the refined view. Aggregate observation cards and failure coverage remain visible.
 - Record a successful fresh-Claude synthetic customer workflow separately from the previously accepted Desktop meeting project. New workflow projects remain Desktop-pending.
