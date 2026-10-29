@@ -2,6 +2,8 @@ import json
 import os
 import zlib
 from pathlib import Path
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 import pytest
 
