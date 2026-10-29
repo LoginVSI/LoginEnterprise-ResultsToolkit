@@ -14,7 +14,7 @@ Branch `feat/native-eux-pdf-scheduling` from merged `20b6a50`. The inspection fo
 - Grafana/InfluxDB: assessed, not run. The mapper's per-observation hash tag is a cardinality risk. [Assessment](grafana-influxdb-assessment.md).
 - Incremental ingestion deferred with a plan; Power BI incremental refresh separate and deferred.
 
-Local checks: 209 tests passed and 1 opt-in real-browser test (run separately and passing), `ruff check`, mypy, public-content check. Appliance use was two bounded read-only captures of existing runs. Not run: Desktop, Linux/macOS/ARM/standard user, CI at the time of writing. LE-PBI Desktop/gateway acceptance was not touched. Existing reports and owner Desktop edits were not modified.
+Local checks: 212 tests passed and 1 opt-in real-browser test (run separately and passing), `ruff check`, mypy, public-content check. Appliance use was two bounded read-only captures of existing runs. Hosted CI for PR #2 passed on Windows, Linux and macOS with Python 3.11 and 3.14 plus the Power Query parse job. Linux and macOS ran stub PDF tests only; no real browser print or native vault ran there. Not run: Desktop, gateway/Service, ARM, standard user, scheduler registration. LE-PBI Desktop/gateway acceptance was not touched. Existing reports and owner Desktop edits were not modified.
 
 ### Preview closeout review, 2026-10-23
 
