@@ -221,3 +221,39 @@ def test_older_comparison_without_grain_still_builds(pair, tmp_path):
     )
     rows = json.loads((tmp_path / "old" / "data" / "Comparison.json").read_text())
     assert rows[0]["grain"] == "observation_mean"
+
+
+def test_vsimax_above_threshold_is_a_lower_bound_not_exact_capacity(pair, tmp_path):
+    b, c, config = pair
+    config["metrics"] = [
+        {
+            **config["metrics"][0],
+            "name": "VSImax",
+            "match": {"resultId": "vsi_max"},
+            "unit": "sessions",
+        }
+    ]
+    seed(b, BASE, overview(BASE, vsi=6.0, vsi_state="aboveThreshold"))
+    seed(c, CANDIDATE, overview(CANDIDATE, vsi=6.0, vsi_state="aboveThreshold"))
+    comparison = compare(b, c, config)
+    row = comparison["metrics"][0]
+    assert row["baseline_display"] == ">6" and row["candidate_display"] == ">6"
+    assert row["baseline_mean"] == 6.0 and row["absolute_change"] is None  # censored: no delta
+    out = tmp_path / "vsi"
+    build_report(
+        comparison,
+        out,
+        {"schema_version": "report/1", "title": "t", "visuals": ["comparison_table"]},
+    )
+    html = next(out.glob("*.html")).read_text(encoding="utf-8")
+    assert "&gt;6" in html and "native_whole_run" in html
+
+
+def test_display_keeps_source_precision_and_states():
+    from le_results.native import display_value
+
+    assert display_value("eux_score", 8.2, "completed") == "8.2"
+    assert display_value("eux_score", 8.1999, "completed") == "8.1999"  # no rounding
+    assert display_value("eux_score", None, "disabled") == "unavailable (disabled)"
+    assert display_value("vsi_max", 6.0, "belowSessionCount") == "6 (belowSessionCount)"
+    assert display_value("total_login_time", 47.2, None) == "47.2"  # no unit inferred

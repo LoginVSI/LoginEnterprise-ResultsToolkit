@@ -8,13 +8,13 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 Branch `feat/native-eux-pdf-scheduling` from merged `20b6a50`. The inspection found no existing overview retrieval: earlier captures held only aggregate `eux-results` rows and whatever score fields the run object carried. This pass adds native whole-run scores, an optional PDF print, a one-shot job and the assessments below. See the [backlog matrix](backlog-matrix.md) for every disposition.
 
-- Native scores: `native_scores` table, per-run state-gated comparison, `grain` labels. Offline only; appliance reconciliation pending. [Details](native-scores.md).
+- Native scores: `native_scores` table, per-run state-gated comparison, `grain` labels, source-precision display with VSImax `aboveThreshold` shown as `>6`. Reconciled read-only against one EUX-enabled run and one EUX-disabled run on the 6.9.2 appliance. Real-data rendering exposed two defects, now fixed: the PDF printer rejected the standard layout (no head element) and a chart caption gave the wrong reason for a censored native value. [Details](native-scores.md).
 - PDF: `report-pdf` printed the synthetic review to three inspected pages with Edge 156 and rejects blank, truncated, unparseable and path-leaking output. A first print left evidence collapsed and split a chart; both were fixed. [Details](pdf-export.md).
 - Job: staging, rename publish, lock, failed/ retention, separate attempt/success/source freshness. A CLI run over retained synthetic captures with PDF succeeded; `job status --max-age-hours 24` correctly failed because the newest source observation is from September. [Details](scheduling.md).
 - Grafana/InfluxDB: assessed, not run. The mapper's per-observation hash tag is a cardinality risk. [Assessment](grafana-influxdb-assessment.md).
 - Incremental ingestion deferred with a plan; Power BI incremental refresh separate and deferred.
 
-Local checks: 209 tests passed and 1 opt-in real-browser test (run separately and passing), `ruff check`, mypy, public-content check. Not run: appliance requests, Desktop, Linux/macOS/ARM/standard user, CI at the time of writing. LE-PBI Desktop/gateway acceptance was not touched. Existing reports and owner Desktop edits were not modified.
+Local checks: 209 tests passed and 1 opt-in real-browser test (run separately and passing), `ruff check`, mypy, public-content check. Appliance use was two bounded read-only captures of existing runs. Not run: Desktop, Linux/macOS/ARM/standard user, CI at the time of writing. LE-PBI Desktop/gateway acceptance was not touched. Existing reports and owner Desktop edits were not modified.
 
 ### Preview closeout review, 2026-10-23
 

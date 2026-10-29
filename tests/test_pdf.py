@@ -188,3 +188,25 @@ def test_real_browser_prints_synthetic_review(tmp_path, report_dir):
     text = " ".join(p.extract_text() for p in PdfReader(str(out)).pages)
     assert "SYNTHETIC" in text and "Evidence, sample counts and limitations" in text
     assert "Selection and source" in text  # collapsed evidence is printed
+
+
+def test_standard_layout_without_head_element_is_printable(tmp_path, monkeypatch):
+    report = tmp_path / "std"
+    report.mkdir()
+    (report / "report.html").write_text(
+        "<!doctype html><html lang='en'><meta charset='utf-8'><title>t</title>"
+        "<h1>Result</h1><details><summary>More</summary>x</details></html>",
+        encoding="utf-8",
+    )
+    tool = tmp_path / "chrome.exe"
+    tool.write_bytes(b"")
+    captured = {}
+
+    def good(target, seen):
+        captured["html"] = seen["page"].read_text(encoding="utf-8")
+        target.write_bytes(make_pdf())
+
+    fake_renderer(monkeypatch, good)
+    monkeypatch.setattr(pdf, "_markers", lambda html: [])
+    pdf.print_report(report, tmp_path / "s.pdf", browser=tool)
+    assert "@page" in captured["html"] and "<details open" in captured["html"]

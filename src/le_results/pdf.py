@@ -45,7 +45,7 @@ PRINT_CSS = (
     "html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}"
     "tr,svg,figure,.card,.panel,.warning,h2{break-inside:avoid}h2{break-after:avoid}"
     "thead{display:table-header-group}details{break-before:page;overflow:visible}"
-    "table{width:100%;table-layout:auto}td,th{overflow-wrap:anywhere}summary{list-style:none}"
+    "table{width:100%;table-layout:auto}td,th{overflow-wrap:break-word}summary{list-style:none}"
     "</style>"
 )
 MAX_HTML_BYTES = 32 * 1024 * 1024
@@ -169,6 +169,13 @@ def _cleanup(path: Path) -> None:
         time.sleep(0.3)
 
 
+def _with_print_css(html: str) -> str:
+    """The standard layout has no explicit head; insert after the root element instead."""
+    if "<head>" in html:
+        return html.replace("<head>", "<head>" + PRINT_CSS, 1)
+    return re.sub(r"(<html[^>]*>)", lambda m: m.group(1) + PRINT_CSS, html, count=1)
+
+
 def _markers(html: str) -> list[str]:
     title = re.search(r"<h1[^>]*>(.*?)</h1>", html, re.S)
     markers = []
@@ -196,8 +203,8 @@ def print_report(
     if source.stat().st_size > MAX_HTML_BYTES:
         raise ToolkitError("Report HTML exceeds the PDF size bound.")
     html = source.read_text(encoding="utf-8")
-    if "<head>" not in html:
-        raise ToolkitError("Report HTML has no head element to print from.", code="pdf_invalid")
+    if "<head>" not in html and not re.search(r"<html[^>]*>", html):
+        raise ToolkitError("Report HTML has no root element to print from.", code="pdf_invalid")
     renderer = browser or find_browser()
     out.parent.mkdir(parents=True, exist_ok=True)
     scratch = tempfile.mkdtemp(prefix="le-pdf-")
@@ -206,7 +213,7 @@ def print_report(
         page = work / "report.html"
         # Print copy only: expose collapsed evidence; the report on disk is unchanged.
         printable = re.sub(r"<details(?![^>]*open)", "<details open", html)
-        page.write_text(printable.replace("<head>", "<head>" + PRINT_CSS, 1), encoding="utf-8")
+        page.write_text(_with_print_css(printable), encoding="utf-8")
         printed = work / "printed.pdf"
         command = [
             str(renderer),

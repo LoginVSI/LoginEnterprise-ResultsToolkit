@@ -13,6 +13,24 @@ AGGREGATE_GRAIN = "aggregate_interval_vendor"
 ENDPOINT = "load-test-run-overview/{id}"
 
 
+def display_value(result_id: str, value: Any, state: Any) -> str:
+    """Source-precision text with vendor meaning; never rounds or invents a bound.
+
+    VSImax in state aboveThreshold means the threshold was not reached, so the vendor value is a
+    lower bound (shown as >6), not an exact capacity.
+    """
+    if value is None:
+        return "unavailable" + (f" ({state})" if state else "")
+    text = repr(value)
+    if text.endswith(".0"):
+        text = text[:-2]
+    if result_id == "vsi_max" and state == "aboveThreshold":
+        return ">" + text
+    if state not in (None, "completed"):
+        return f"{text} ({state})"
+    return text
+
+
 def _result_row(
     entry: dict[str, Any], group: str, item: Any, state: Any, capture_id: str
 ) -> dict[str, Any]:

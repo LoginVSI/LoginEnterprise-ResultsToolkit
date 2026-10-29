@@ -55,6 +55,9 @@ def local_query(path: Path, columns: list[tuple[str, str]]) -> str:
     )
 
 
+DISPLAY_FIELD = {"baseline_mean": "baseline_display", "candidate_mean": "candidate_display"}
+
+
 def build_report(
     comparison: dict[str, Any],
     directory: Path,
@@ -162,6 +165,8 @@ def build_report(
             **{k: v for k, v in r.items() if k != "group"},
             "group_identity": json.dumps(r["group"], sort_keys=True),
             "grain": r.get("grain", "observation_mean"),
+            "baseline_display": r.get("baseline_display"),
+            "candidate_display": r.get("candidate_display"),
             "baseline_state": r.get("baseline_state"),
             "candidate_state": r.get("candidate_state"),
             "metric_group": r["metric"] + " / " + json.dumps(r["group"], sort_keys=True),
@@ -181,6 +186,8 @@ def build_report(
         ("unit", "string"),
         ("semantics", "string"),
         ("grain", "string"),
+        ("baseline_display", "string"),
+        ("candidate_display", "string"),
         ("baseline_state", "string"),
         ("candidate_state", "string"),
         ("group_identity", "string"),
@@ -573,7 +580,14 @@ def build_report(
     html_rows = "".join(
         "<tr>"
         + "".join(
-            "<td>" + html.escape(str(r.get(k) if r.get(k) is not None else "unavailable")) + "</td>"
+            "<td>"
+            + html.escape(
+                str(
+                    r.get(DISPLAY_FIELD.get(k, k))
+                    or (r.get(k) if r.get(k) is not None else "unavailable")
+                )
+            )
+            + "</td>"
             for k in (
                 "metric_group",
                 "unit",
@@ -596,7 +610,7 @@ def build_report(
         label = html.escape(row["metric_group"])
         y = i * 48
         if delta is None:
-            bars += f'<text x="0" y="{y + 16}">{label}: relative change unavailable (missing or zero baseline)</text>'
+            bars += f'<text x="0" y="{y + 16}">{label}: relative change unavailable ({"native state is not completed, or value missing" if row.get("grain") == "native_whole_run" else "missing or zero baseline"})</text>'
         else:
             width = min(abs(delta), 100) * 3
             x = 350 - width if delta < 0 else 350

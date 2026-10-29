@@ -8,7 +8,7 @@ from typing import Any
 from .errors import ToolkitError
 from .evidence import has_table, load_table, verify_capture
 from .metrics import validate_metrics
-from .native import GRAIN
+from .native import GRAIN, display_value
 
 
 def numeric(value: Any) -> bool:
@@ -90,6 +90,8 @@ def native_comparison(
         "candidate_missing": int(cv is None),
         "baseline_sessions": 0,
         "candidate_sessions": 0,
+        "baseline_display": display_value(metric["match"]["resultId"], bv, base["state"]),
+        "candidate_display": display_value(metric["match"]["resultId"], cv, cand["state"]),
         "baseline_state": base["state"],
         "candidate_state": cand["state"],
         "baseline_run_id": base["run_id"],
