@@ -101,7 +101,7 @@ def fake_renderer(monkeypatch, behavior):
     def run(command, **kwargs):
         target = next(c for c in command if c.startswith("--print-to-pdf="))
         seen["command"] = command
-        seen["page"] = Path(command[-1].removeprefix("file:///").replace("/", os.sep))
+        seen["page"] = Path(url2pathname(urlparse(command[-1]).path))
         behavior(Path(target.split("=", 1)[1]), seen)
 
     monkeypatch.setattr(pdf.subprocess, "run", run)
