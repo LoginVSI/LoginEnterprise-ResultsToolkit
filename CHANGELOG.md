@@ -2,6 +2,11 @@
 
 ## Community preview, unreleased
 
+- Retrieve native whole-run EUX/VSImax results from the Load overview into a separate `native_scores` table and compare them per run with vendor states. Label aggregate-interval `eux` rows and never average native scores across runs.
+- Add `report-pdf`, an optional verified PDF print of an existing HTML report using a user-local Edge, Chrome or Chromium. No new pip dependency or administrator rights.
+- Add `job run` and `job status` for scheduler-driven capture/report runs that publish only complete output and separate last attempt, last success and source freshness.
+- Add the backlog reconciliation and a Grafana/InfluxDB feasibility assessment. Their runtime is unverified.
+
 - Complete the preview closeout review and record both final Blog B reviews as complete. Keep project-specific acceptance, pending runtime/platform checks and optional integrations distinct. Merge authorization does not publish a release, package or article.
 - Resolve closeout CI audit findings with development-only filelock 4.2.1, pypdf 6.21.2 and setuptools 84.1.0 pins and official hashes. Runtime dependencies are unchanged; no advisory suppression is added.
 
