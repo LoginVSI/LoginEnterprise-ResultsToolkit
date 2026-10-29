@@ -44,6 +44,10 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
     if sum(len(config[role]["ids"]) for role in roles) > 4:
         raise ToolkitError("The preview live connector permits at most four results per refresh.")
     metrics = validate_metrics(config.get("metrics"))
+    if any(metric.get("table") == "native_scores" for metric in metrics):
+        raise ToolkitError(
+            "Native whole-run scores are available in captures, comparisons and snapshot reports; the refreshable connector does not retrieve the Load overview yet."
+        )
     for metric in metrics:
         if not isinstance(metric.get("name"), str) or not metric["name"].strip():
             raise ToolkitError("Every metric requires a nonempty name.")

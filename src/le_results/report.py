@@ -85,6 +85,16 @@ def build_report(
                     for key in ("successful_executions", "executions_without_measurements"):
                         if key not in old_side:
                             new_side.pop(key)
+        # Older files also predate the additive per-metric grain marker on observation rows.
+        old_metrics = comparison.get("metrics")
+        if isinstance(old_metrics, list) and len(old_metrics) == len(expected["metrics"]):
+            for old_row, new_row in zip(old_metrics, expected["metrics"], strict=True):
+                if (
+                    isinstance(old_row, dict)
+                    and "grain" not in old_row
+                    and new_row.get("grain") == "observation_mean"
+                ):
+                    new_row.pop("grain")
         if comparison != expected:
             raise ToolkitError(
                 "Comparison differs from its verified source/configuration; rebuild it."
@@ -151,6 +161,9 @@ def build_report(
         {
             **{k: v for k, v in r.items() if k != "group"},
             "group_identity": json.dumps(r["group"], sort_keys=True),
+            "grain": r.get("grain", "observation_mean"),
+            "baseline_state": r.get("baseline_state"),
+            "candidate_state": r.get("candidate_state"),
             "metric_group": r["metric"] + " / " + json.dumps(r["group"], sort_keys=True),
         }
         for r in comparison["metrics"]
@@ -167,6 +180,9 @@ def build_report(
         ("metric_group", "string"),
         ("unit", "string"),
         ("semantics", "string"),
+        ("grain", "string"),
+        ("baseline_state", "string"),
+        ("candidate_state", "string"),
         ("group_identity", "string"),
         *[
             (k, "double")
@@ -521,6 +537,7 @@ def build_report(
                 else [
                     "metric_group",
                     "unit",
+                    "grain",
                     "baseline_mean",
                     "candidate_mean",
                     "absolute_change",
@@ -560,6 +577,7 @@ def build_report(
             for k in (
                 "metric_group",
                 "unit",
+                "grain",
                 "baseline_mean",
                 "candidate_mean",
                 "absolute_change",
@@ -587,7 +605,7 @@ def build_report(
         ""
         if capture_mode
         else (
-            "<table><tr><th>Metric/group</th><th>Unit</th><th>Baseline mean</th><th>Candidate mean</th><th>Absolute change</th><th>Relative %</th><th>Baseline n</th><th>Candidate n</th></tr>"
+            "<table><tr><th>Metric/group</th><th>Unit</th><th>Grain</th><th>Baseline value/mean</th><th>Candidate value/mean</th><th>Absolute change</th><th>Relative %</th><th>Baseline n</th><th>Candidate n</th></tr>"
             + html_rows
             + "</table>"
             + f'<svg width="700" height="{max(48, len(metrics) * 48)}" aria-label="Signed relative change percent; negative left, positive right; bars clipped at 100 percent">'

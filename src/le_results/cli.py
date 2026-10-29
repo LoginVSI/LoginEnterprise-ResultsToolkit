@@ -114,6 +114,22 @@ def parser() -> argparse.ArgumentParser:
     native_pdf.add_argument("--application-run-id", required=True)
     native_pdf.add_argument("--out", type=Path, required=True)
     native_pdf.add_argument("--max-mib", type=int, default=16)
+    job = sub.add_parser("job", help="One-shot capture/report job for an OS scheduler")
+    js = job.add_subparsers(dest="action", required=True)
+    jr = js.add_parser("run", help="Run once; publish only complete output")
+    jr.add_argument("--config", type=Path, required=True)
+    jr.add_argument("--out-root", type=Path, required=True)
+    jt = js.add_parser("status", help="Last attempt, last success and source freshness")
+    jt.add_argument("--out-root", type=Path, required=True)
+    jt.add_argument("--max-age-hours", type=float)
+    pdf = sub.add_parser(
+        "report-pdf", help="Optional PDF print of a built HTML report (user-local browser)"
+    )
+    pdf.add_argument("--report-dir", type=Path, help="Directory containing report.html")
+    pdf.add_argument("--out", type=Path, help="New PDF path")
+    pdf.add_argument("--replace", action="store_true", help="Swap an existing PDF after success")
+    pdf.add_argument("--check", action="store_true", help="Only diagnose the renderer")
+    pdf.add_argument("--timeout", type=float, default=90)
     lp = sub.add_parser(
         "export-line-protocol", help="Optional finite dry-run file export; no database writes"
     )
@@ -333,6 +349,26 @@ def run(args: argparse.Namespace) -> Any:
             "sha256": hashlib.sha256(data).hexdigest(),
             "scope": "native Application GET report; no report job created",
         }
+    if args.command == "job":
+        from .job import job_status, run_job
+
+        if args.action == "status":
+            return job_status(args.out_root, args.max_age_hours)
+
+        def factory(profile_name: str, limits: dict[str, Any]) -> Client:
+            profile = store.get(profile_name)
+            mapped = {("deadline_seconds" if k == "deadline" else k): v for k, v in limits.items()}
+            return Client(profile, resolve_token(profile), **mapped)
+
+        return run_job(args.config, args.out_root, factory)
+    if args.command == "report-pdf":
+        from .pdf import BROWSER_ENV, find_browser, print_report
+
+        if args.check:
+            return {"renderer": find_browser().stem, "override_variable": BROWSER_ENV}
+        if args.report_dir is None or args.out is None:
+            raise ToolkitError("report-pdf needs --report-dir and --out (or --check).")
+        return print_report(args.report_dir, args.out, replace=args.replace, timeout=args.timeout)
     if args.command == "export-line-protocol":
         from .timeseries import export_line_protocol
 
@@ -348,7 +384,7 @@ def main() -> int:
         return 2 if isinstance(result, dict) and result.get("ok") is False else 0
     except ToolkitError as exc:
         print(json.dumps({"ok": False, "error": exc.diagnostic()}), file=sys.stderr)
-        return 2
+        return 3 if exc.code == "job_locked" else 2
     except KeyboardInterrupt:
         print("Cancelled.", file=sys.stderr)
         return 130

@@ -10,6 +10,7 @@ from typing import Any
 from .client import Client
 from .contracts import route
 from .errors import ToolkitError
+from .native import AGGREGATE_GRAIN, flatten_overview
 from .selection import Selection, utc
 
 TABLES = (
@@ -20,6 +21,7 @@ TABLES = (
     "measurements",
     "session_metrics",
     "eux",
+    "native_scores",
     "current_configuration",
     "collectors",
 )
@@ -127,7 +129,8 @@ def finalize(
                 "events": "One source event, with nullable relationships retained",
                 "measurements": "One timer observation; measurementId is not an observation ID; duration unit unspecified by API",
                 "session_metrics": "One timestamp/session/field/instance observation; source unit retained; host scope uncertain",
-                "eux": "One vendor score interval; no toolkit EUX calculation",
+                "eux": "Aggregate-interval vendor score rows from eux-results; not a whole-run score; no toolkit EUX calculation",
+                "native_scores": "Native whole-run result per run from the Load result overview (eux_score, eux_baseline, eux_steady_state, vsi_max) with vendor state; null is unavailable, never zero",
                 "current_configuration": "One current test configuration, never evidence of historical settings",
                 "collectors": "One current definition/group/selected-result association; source query/counter, instance and poll settings retained where exposed",
             },
@@ -274,6 +277,8 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                     ):
                         normalized["testRunId"] = result_id
                         normalized["_testRunId_from_endpoint"] = True
+                    if table == "eux":
+                        normalized["score_grain"] = AGGREGATE_GRAIN
                     tables[table].append(normalized)
             outcome["status"] = "empty" if outcome["count"] == 0 else "complete"
             return data
@@ -456,6 +461,18 @@ def capture(client: Client, selection: Selection, directory: Path) -> dict[str, 
                     params=window,
                     optional=True,
                 )
+            if selection.test_type == "LoadTest":
+                overview = acquire(
+                    route("load-test-run-overview/{id}", id=result_id), None, optional=True
+                )
+                if overview is not None:
+                    try:
+                        tables["native_scores"].extend(flatten_overview(overview, result_id, captured))
+                    except ToolkitError as exc:
+                        manifest["endpoints"][-1].update(
+                            status="failed", error=str(exc), diagnostic=exc.diagnostic()
+                        )
+                        raise
         manifest["status"] = (
             "partial"
             if manifest.get("identity_conflicts")
@@ -523,7 +540,13 @@ def verify_capture(directory: Path) -> dict[str, Any]:
     return manifest
 
 
+def has_table(directory: Path, table: str) -> bool:
+    return (directory / "normalized" / f"{table}.json").is_file()
+
+
 def load_table(directory: Path, table: str) -> list[dict[str, Any]]:
     if table not in TABLES:
         raise ToolkitError("Unknown table.")
+    if table == "native_scores" and not has_table(directory, table):
+        return []  # Captures made before native overview retrieval; use has_table to tell.
     return json.loads((directory / "normalized" / f"{table}.json").read_text(encoding="utf-8"))
