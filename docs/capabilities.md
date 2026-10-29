@@ -17,7 +17,7 @@
 | Native whole-run EUX/VSImax scores | `native_scores` table, per-run comparison with state gating, grain labels in HTML/snapshot | Synthetic overview fixtures: identity, null, state, no averaging, old captures | Two completed runs captured read-only: EUX-disabled (nulls and states preserved) and EUX-enabled (four values and states match owner-supplied UI/PDF/overview; VSImax shown as a lower bound) | Connector does not retrieve it. See [native scores](native-scores.md) |
 | Custom PDF of a report | `report-pdf` with user-local Chromium-family browser | Stub and real Edge print, corrupt/blank/leak/timeout cases, inspected pages | N/A | Windows Edge only; see [PDF export](pdf-export.md) |
 | One-shot capture/report job | `job run`/`job status`, lock, staging, prior-good preservation, freshness fields | Retained and mock-appliance runs, failure, partial, lock, stale | Not run against an appliance | No scheduler registered; see [scheduling](scheduling.md) |
-| Grafana/InfluxDB | Assessment only | None | None | Runtime unverified; see [assessment](grafana-influxdb-assessment.md) |
+| Grafana/InfluxDB | Assessment plus finite file mapper | Loopback proof of InfluxDB 3 Core 3.12.0 and Grafana 13.3.0 on synthetic data: write, replay, SQL, dashboard | None | Auth, TLS, scale and Infinity unverified; no writer. See [assessment](grafana-influxdb-assessment.md) |
 | Service/gateway, streaming, incremental ingestion | Outside core preview acceptance | Procedures/limits only | No | No |
 
 | Test model | Evidence | Limits |

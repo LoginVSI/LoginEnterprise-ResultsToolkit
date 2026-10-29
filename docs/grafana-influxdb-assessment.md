@@ -1,6 +1,6 @@
 # Grafana and InfluxDB feasibility
 
-This repository owns the assessment. LE-PBI should not build a duplicate stack. The runtime of options A and B is **unverified**: no Grafana or InfluxDB software was downloaded or run in this change, because a download needs owner approval and nothing here justifies touching shared infrastructure. The Login Enterprise appliance's internal Grafana and InfluxDB were not touched.
+This repository owns the assessment. LE-PBI should not build a duplicate stack. After owner approval, a disposable loopback proof of option B ran on 28 October (below). Option A (Infinity) was **not** run: its plugin was outside the approved download. The Login Enterprise appliance's internal Grafana and InfluxDB were not touched, there was no Docker and no service, and nothing was exposed beyond 127.0.0.1.
 
 ## Versions and compatibility
 
@@ -37,11 +37,34 @@ InfluxDB generations differ and must not be mixed. 2.x uses org, bucket, Flux or
 3. Do not build a write path for B yet. Go criteria: a named customer already runs Grafana with InfluxDB 3; a disposable InfluxDB 3 instance is available; the cardinality test of the observation-hash tag passes on a realistic capture; Core query and retention limits meet the customer's history need; a batch writer with token from the vault, bounded batches, retry that is safe under replay and count reconciliation is agreed. Estimated effort once go: three to five days for the writer and its negative tests, plus a day for a pinned synthetic proof. No-go if the customer's history exceeds Core limits (consider Enterprise), or cardinality fails.
 4. If the customer uses InfluxDB 2.x, B needs a different mapper and API. Treat it as a separate item.
 
-## Bounded acceptance plan (needs owner approval to download)
+## Option B loopback proof, 28 October 2026
 
-1. Pin Grafana 13.2.x and InfluxDB 3 Core 3.12.x from official release artifacts into an ignored `.private/` folder, bound to loopback, no public exposure, no Docker, no services.
-2. Prepare a synthetic capture, run `export-line-protocol`, write with a one-off script using a test-only token, then query the count and a known value with SQL.
-3. Render one Grafana panel and one Infinity panel from the synthetic comparison CSV.
-4. Reconcile point and row counts and one value against `receipt.json`. Record versions, setup and cleanup. Delete the folder afterwards.
+Pinned and checksum-verified official Windows x64 artifacts: InfluxDB 3 Core 3.12.0 (SHA-256 matched the published `.sha256` file) and Grafana OSS 13.3.0 (SHA-256 matched the download page). Grafana 13.3.0 replaced the 13.2.x originally planned because it was current and is at least 13.2. Both ran as the current user, bound to 127.0.0.1, under an ignored private folder. InfluxDB used `--without-auth` on loopback only, so **token authentication and TLS were not exercised**.
+
+What was shown, using the synthetic three-action review capture (baseline 9 timings, candidate 8 because one failed execution has no timing):
+
+- `export-line-protocol` prepared 9 and 8 points. Posting each file to `/api/v3/write_lp` with `precision=nanosecond` returned 204.
+- SQL counts per run were 9 and 8, and means were 1166.667 and 1112.5, equal to an independent calculation from the capture and to the receipt's `exported_points`.
+- Replaying the candidate file returned 204 and left the total at 17 points: the observation tag makes replay idempotent for unchanged data.
+- Grafana's InfluxDB data source in SQL mode (Flight SQL over the same port, `insecureGrpc` for plain loopback HTTP) passed its health check and returned the same counts and means through `/api/ds/query`.
+- A provisioned dashboard rendered a point series per run and a count/mean table. Files are in [examples/grafana-influxdb3](../examples/grafana-influxdb3).
+
+Findings that matter for customers:
+
+- In Grafana 13.3 the SQL query field is `rawSql` and the table format is `"format": "table"`. Using the InfluxQL-era `query` key fails with "No SQL statements were provided".
+- Long-form results need a `partitionByValues` transform on `result_id` to draw one series per run.
+- Time displayed in the browser's timezone, so a UTC-7 browser showed 03:00 for 10:00Z data. The example dashboard pins `timezone: utc`.
+- A time-series panel without a time column fails with "no time column found".
+- Only 17 points were written. Cardinality, large batches, Core query-range and retention limits, authentication, TLS, partial-write behavior and `value_present=false` rows were **not** tested.
+
+Cleanup: processes and plugin children were stopped, ports closed, and binaries and data deleted. Setup used `influxdb3 serve --node-id proof --object-store file --data-dir <dir> --http-bind 127.0.0.1:18181 --without-auth` and `grafana server --homepath <dir>` with provisioning and paths set by `GF_PATHS_*` environment variables.
+
+Effect on the recommendation: the file-to-database path works end to end on a tiny synthetic load, so option B is technically feasible. The no-writer decision stands, because the go criteria (a customer, cardinality, limits, auth and TLS, retry rules) are untested.
+
+## Remaining acceptance plan (option A and hardening)
+
+1. Repeat with token authentication and TLS on loopback, a missing-value (`value_present=false`) row and a realistic capture of tens of thousands of points to measure the observation-tag cardinality.
+2. With approval for the Infinity plugin, render one panel from the synthetic comparison CSV served from loopback.
+3. Reconcile counts and one value against `receipt.json`, record versions and delete the folder afterwards.
 
 Until then the line-protocol export stays a finite file mapper with no destination claim.
