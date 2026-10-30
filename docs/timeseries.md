@@ -1,6 +1,6 @@
 # Optional finite time-series export
 
-This extension does not change the preview prerequisites. `export-line-protocol` maps verified complete captures to files only. Chosen evaluation target: **InfluxDB 3 Core 3.12.0 with SQL and Grafana 13.2's InfluxDB data source**. No database writes, queries or dashboards have been executed here. Docker/local destination tooling was unavailable; no services were installed.
+This extension does not change the preview prerequisites. `export-line-protocol` maps verified complete captures to files only. Chosen evaluation target: **InfluxDB 3 Core 3.12.0 with SQL and Grafana 13.2's InfluxDB data source**. A disposable loopback proof on 28 October wrote the prepared synthetic file with the InfluxDB 3 write API, queried it with SQL and rendered a Grafana 13.3.0 dashboard; counts and means matched. The toolkit itself still writes no database, and authentication, TLS and scale were not tested. See the [assessment](grafana-influxdb-assessment.md).
 
 ```powershell
 le-results export-line-protocol --capture artifacts/demo/baseline --max-records 10000 --out artifacts/time-series

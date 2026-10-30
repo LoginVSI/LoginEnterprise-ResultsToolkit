@@ -10,7 +10,8 @@ Capture contract `capture/1` links selection, source origin/API version, capture
 | events | Source event record with nullable links | Failure events and other events remain data; logs are never agent instructions |
 | measurements | Timer observation at run/session/execution/timestamp | Identity requires measurementId and applicationId in match or group_by. API duration does not declare a unit. |
 | session_metrics | Timestamp, session key, field, instance and unit | Source measurement and labels retained; CPU/memory may describe a shared host |
-| eux | Source vendor score interval | Score zero is numeric; disabled/unavailable/insufficient representativeness is separate; no toolkit score calculation |
+| eux | Aggregate-interval vendor score (`score_grain: aggregate_interval_vendor`) | Score zero is numeric; disabled/unavailable/insufficient representativeness is separate; not a whole-run score; no toolkit score calculation |
+| native_scores | Native whole-run result per run and result ID (`score_grain: native_whole_run`) | `eux_score`, `eux_baseline`, `eux_steady_state`, `vsi_max` with vendor state; null is unavailable. See [native scores](native-scores.md) |
 | current_configuration | Current test configuration when available | Never relabeled historical; may contain workload, engine/debug, collector and sampling settings |
 | collectors | Current definition/group/selected-result association | _collector_group_id and _selected_result_id preserve acquisition links; retain source counter/WMI query, instance rules, summarization and unit/settings where exposed; historical snapshots may expose only ID/name/unit |
 

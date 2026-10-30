@@ -4,6 +4,22 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Native scores, PDF and scheduled jobs, 2026-10-28
+
+Branch `feat/native-eux-pdf-scheduling` from merged `20b6a50`. The inspection found no existing overview retrieval: earlier captures held only aggregate `eux-results` rows and whatever score fields the run object carried. This pass adds native whole-run scores, an optional PDF print, a one-shot job and the assessments below. See the [backlog matrix](backlog-matrix.md) for every disposition.
+
+- Native scores: `native_scores` table, per-run state-gated comparison, `grain` labels, source-precision display with VSImax `aboveThreshold` shown as `>6`. Reconciled read-only against one EUX-enabled run and one EUX-disabled run on the 6.9.2 appliance. Real-data rendering exposed two defects, now fixed: the PDF printer rejected the standard layout (no head element) and a chart caption gave the wrong reason for a censored native value. [Details](native-scores.md).
+- PDF: `report-pdf` printed the synthetic review to three inspected pages with Edge 156 and rejects blank, truncated, unparseable and path-leaking output. A first print left evidence collapsed and split a chart; both were fixed. [Details](pdf-export.md).
+- Job: staging, rename publish, lock, failed/ retention, separate attempt/success/source freshness. A CLI run over retained synthetic captures with PDF succeeded; `job status --max-age-hours 24` correctly failed because the newest source observation is from September. [Details](scheduling.md).
+- Grafana/InfluxDB: decided as one optional example (data source, dashboard, standard-library writer with tests), no CLI feature. Loopback proofs on synthetic data: open InfluxDB 3 Core 3.12.0 with Grafana 13.3.0, then Core with admin token and TLS to 30,000 points with replay, resume, changed-record, late-arrival and partial-failure checks. Core offers admin tokens only. Infinity deferred; scale, retention and Grafana over TLS untested. [Assessment](grafana-influxdb-assessment.md).
+- Incremental ingestion deferred with a plan; Power BI incremental refresh separate and deferred.
+
+Local checks (30 October): 235 tests passed and 1 opt-in real-browser test (run separately, passing), `ruff check`, mypy, the public-content check, a wheel build whose 22 modules match `src`, and the fresh-wheel run outside the checkout including `job run` and `job status`. Appliance use was bounded read-only: captures of two existing completed Load runs, one 48-hour window of the existing Continuous test (empty, so its collection is off) and one appliance-backed job run of the two Load runs with a verified PDF. No tests, workloads or configuration were created. Hosted CI for PR #2 is recorded at merge time. Not run: Desktop, gateway/Service, ARM, Linux/macOS vault, standard user.
+
+### Closeout, 2026-10-30
+
+A separate-context review found no high-severity defect and several medium issues, all fixed and retested ([record](audit-2026-10-30.md)). Native columns and the native source table now appear only when a report compares native scores, so timing and resource projects keep the model, queries and visuals accepted earlier (confirmed byte-identical apart from the evidence copy). New or changed Power BI behavior for native reports has official-schema and M-parser checks only and is **Desktop-pending**; the LE-PBI session holds the shared Desktop slot and nothing was installed or opened. The refreshable connector still does not retrieve the native overview. Scheduler registration tooling is verified (dry run, one disabled register and removal); no recurring task exists. A Power BI Service and gateway runbook is written ([readiness](gateway-readiness.md)); no tenant was available. Incremental ingestion remains deferred with a documented design. Linux, macOS, ARM, native non-Windows vault, standard-user and clean-machine proof remain unavailable.
+
 ### Preview closeout review, 2026-10-23
 
 The final independent Claude factual/editorial review and the separate private writing-repository review of Blog B are complete. Material editorial findings were addressed in the final private article/social pack. That work adds no new product, Desktop or appliance validation. Blog B and socials remain unpublished; publication placeholders are retained. The supplied Storylane link is retained without a new tour audit or claim about its contents.

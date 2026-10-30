@@ -22,6 +22,7 @@ SINGLE = {
     "test-runs/{id}",
     "tests/{id}",
     "test-runs/{id}/eux-results",
+    "load-test-run-overview/{id}",
     "test-runs/{id}/statistics",
     "test-runs/{id}/reports/pdf",
 }

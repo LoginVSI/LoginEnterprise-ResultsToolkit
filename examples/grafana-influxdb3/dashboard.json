@@ -1,0 +1,7 @@
+{"uid":"leproof","title":"LE synthetic proof","schemaVersion":39,"timezone":"utc","time":{"from":"2026-09-01T09:50:00Z","to":"2026-09-01T10:20:00Z"},"panels":[
+{"id":1,"type":"timeseries","title":"Timer observations by run (ms, SYNTHETIC)","gridPos":{"x":0,"y":0,"w":24,"h":9},"datasource":{"type":"influxdb","uid":"leinflux"},
+ "fieldConfig":{"defaults":{"unit":"ms","custom":{"drawStyle":"points","pointSize":8}},"overrides":[]},
+ "transformations":[{"id":"partitionByValues","options":{"fields":["result_id"],"keepFields":false}}],
+ "targets":[{"refId":"A","datasource":{"type":"influxdb","uid":"leinflux"},"rawQuery":true,"rawSql":"SELECT time, value, result_id FROM le_measurements WHERE $__timeFilter(time) AND value_present = true ORDER BY time","format":"time_series"}]},
+{"id":2,"type":"table","title":"Points and mean per run (SYNTHETIC)","gridPos":{"x":0,"y":9,"w":24,"h":6},"datasource":{"type":"influxdb","uid":"leinflux"},
+ "targets":[{"refId":"A","datasource":{"type":"influxdb","uid":"leinflux"},"rawQuery":true,"rawSql":"SELECT result_id, count(*) AS points, avg(value) AS mean_ms FROM le_measurements WHERE $__timeFilter(time) GROUP BY result_id ORDER BY result_id","format":"table"}]}]}

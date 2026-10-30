@@ -55,6 +55,18 @@ def local_query(path: Path, columns: list[tuple[str, str]]) -> str:
     )
 
 
+DISPLAY_FIELD = {"baseline_mean": "baseline_display", "candidate_mean": "candidate_display"}
+NATIVE_FIELDS = (
+    "grain",
+    "baseline_display",
+    "candidate_display",
+    "baseline_state",
+    "candidate_state",
+    "baseline_run_id",
+    "candidate_run_id",
+)
+
+
 def build_report(
     comparison: dict[str, Any],
     directory: Path,
@@ -85,6 +97,16 @@ def build_report(
                     for key in ("successful_executions", "executions_without_measurements"):
                         if key not in old_side:
                             new_side.pop(key)
+        # Older files also predate the additive per-metric grain marker on observation rows.
+        old_metrics = comparison.get("metrics")
+        if isinstance(old_metrics, list) and len(old_metrics) == len(expected["metrics"]):
+            for old_row, new_row in zip(old_metrics, expected["metrics"], strict=True):
+                if (
+                    isinstance(old_row, dict)
+                    and "grain" not in old_row
+                    and new_row.get("grain") == "observation_mean"
+                ):
+                    new_row.pop("grain")
         if comparison != expected:
             raise ToolkitError(
                 "Comparison differs from its verified source/configuration; rebuild it."
@@ -147,10 +169,18 @@ def build_report(
     for rows in preflight_tables.values():
         validate_numeric_rows(rows)
     directory.mkdir(parents=True, exist_ok=True)
+    # Native whole-run columns exist only when the comparison has native scores, so reports of
+    # timing/resource comparisons keep exactly the model and tables that were already accepted.
+    native = any(r.get("grain") == "native_whole_run" for r in comparison["metrics"])
     metrics = [
         {
-            **{k: v for k, v in r.items() if k != "group"},
+            **{k: v for k, v in r.items() if k != "group" and k not in NATIVE_FIELDS},
             "group_identity": json.dumps(r["group"], sort_keys=True),
+            **(
+                {k: r.get(k) for k in NATIVE_FIELDS} | {"grain": r.get("grain", "observation_mean")}
+                if native
+                else {}
+            ),
             "metric_group": r["metric"] + " / " + json.dumps(r["group"], sort_keys=True),
         }
         for r in comparison["metrics"]
@@ -188,6 +218,19 @@ def build_report(
         ],
         ("interpretation", "string"),
         ("warning", "string"),
+        *(
+            [
+                ("grain", "string"),
+                ("baseline_display", "string"),
+                ("candidate_display", "string"),
+                ("baseline_state", "string"),
+                ("candidate_state", "string"),
+                ("baseline_run_id", "string"),
+                ("candidate_run_id", "string"),
+            ]
+            if native
+            else []
+        ),
     ]
     coverage_cols = [
         ("scenario", "string"),
@@ -277,6 +320,8 @@ def build_report(
     for name, rows in source_tables.items():
         if not source_paths:
             break
+        if name == "native_scores" and not native:
+            continue  # keep accepted model shape unless native scores are being reported
         if name in ("runs", "sessions"):
             key = "run_key" if name == "runs" else "session_key"
             identities = [row[key] for row in rows]
@@ -521,6 +566,7 @@ def build_report(
                 else [
                     "metric_group",
                     "unit",
+                    *(["grain"] if native else []),
                     "baseline_mean",
                     "candidate_mean",
                     "absolute_change",
@@ -528,6 +574,11 @@ def build_report(
                     "baseline_samples",
                     "candidate_samples",
                     "warning",
+                    *(
+                        ["baseline_display", "candidate_display", "baseline_state", "candidate_state"]
+                        if native
+                        else []
+                    ),
                 ]
             )
             visual = {
@@ -556,10 +607,18 @@ def build_report(
     html_rows = "".join(
         "<tr>"
         + "".join(
-            "<td>" + html.escape(str(r.get(k) if r.get(k) is not None else "unavailable")) + "</td>"
+            "<td>"
+            + html.escape(
+                str(
+                    r.get(DISPLAY_FIELD.get(k, k))
+                    or (r.get(k) if r.get(k) is not None else "unavailable")
+                )
+            )
+            + "</td>"
             for k in (
                 "metric_group",
                 "unit",
+                *(["grain"] if native else []),
                 "baseline_mean",
                 "candidate_mean",
                 "absolute_change",
@@ -578,7 +637,7 @@ def build_report(
         label = html.escape(row["metric_group"])
         y = i * 48
         if delta is None:
-            bars += f'<text x="0" y="{y + 16}">{label}: relative change unavailable (missing or zero baseline)</text>'
+            bars += f'<text x="0" y="{y + 16}">{label}: relative change unavailable ({"native state is not completed, or value missing" if row.get("grain") == "native_whole_run" else "missing or zero baseline"})</text>'
         else:
             width = min(abs(delta), 100) * 3
             x = 350 - width if delta < 0 else 350
@@ -587,7 +646,10 @@ def build_report(
         ""
         if capture_mode
         else (
-            "<table><tr><th>Metric/group</th><th>Unit</th><th>Baseline mean</th><th>Candidate mean</th><th>Absolute change</th><th>Relative %</th><th>Baseline n</th><th>Candidate n</th></tr>"
+            "<table><tr><th>Metric/group</th><th>Unit</th>"
+            + ("<th>Grain</th>" if native else "")
+            + ("<th>Baseline value/mean</th><th>Candidate value/mean</th>" if native else "<th>Baseline mean</th><th>Candidate mean</th>")
+            + "<th>Absolute change</th><th>Relative %</th><th>Baseline n</th><th>Candidate n</th></tr>"
             + html_rows
             + "</table>"
             + f'<svg width="700" height="{max(48, len(metrics) * 48)}" aria-label="Signed relative change percent; negative left, positive right; bars clipped at 100 percent">'

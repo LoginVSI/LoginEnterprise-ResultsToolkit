@@ -129,3 +129,15 @@ le-results report-capture --capture artifacts/selected --config examples/finite-
 ```
 
 This has no invented baseline/candidate or delta. Unsupported visual/type inputs fail explicitly. For live loading, install one reviewed package with `powershell.exe -NoProfile -File scripts/Install-LEResultsConnector.ps1 -Package artifacts/ResultsToolkit.mez`; save/close Desktop first. `-DiagnoseOnly` reports file/export presence, not host loading. See Power BI guidance for build-specific folders and separate Key/trust.
+
+## Optional: PDF, scheduled jobs, upgrade, removal and recovery
+
+PDF output and scheduled jobs need nothing beyond the engine. `report-pdf` uses a browser already on the machine; see [PDF export](pdf-export.md). `job run` needs a job file and an output folder; see [scheduling](scheduling.md). To register a Windows task for your own account run `scripts/Register-LEResultsJob.ps1`, which prints a dry run by default, needs an explicit time and interval, and can create the task disabled.
+
+First setup with a missing piece, in order:
+
+1. `scripts/Test-LEResultsReadiness.ps1` names a missing Python, dependency or architecture problem and the next action.
+2. `le-results profile add lab --url https://appliance.example.com` stores the non-secret address. Enter the token only with `le-results auth set --profile lab`, which uses hidden input and your native credential store.
+3. `le-results doctor --profile lab` separates DNS, TCP, TLS and HTTP failures. Fix a certificate with the scoped trust steps in [troubleshooting](troubleshooting.md); never turn verification off.
+
+Upgrade: install the new wheel with `pip install --upgrade` inside the project environment, rerun the readiness script and `le-results verify` on an existing capture. Captures are versioned files and older ones stay readable. Removal: delete the project environment, run `le-results auth delete --profile lab` for each profile, delete the profile configuration and remove any task with `scripts/Register-LEResultsJob.ps1 -TaskName <name> -Unregister -Apply`. Reports and captures are your files and are never deleted by these steps. Recovery after a failed run is in [scheduling](scheduling.md).

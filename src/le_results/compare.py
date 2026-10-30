@@ -6,12 +6,114 @@ from pathlib import Path
 from typing import Any
 
 from .errors import ToolkitError
-from .evidence import load_table, verify_capture
+from .evidence import has_table, load_table, verify_capture
 from .metrics import validate_metrics
+from .native import GRAIN, display_value
 
 
 def numeric(value: Any) -> bool:
     return type(value) in (int, float) and math.isfinite(value)
+
+
+def native_side(
+    directory: Path,
+    scenario: dict[str, Any],
+    metric: dict[str, Any],
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if len(scenario["ids"]) != 1:
+        raise ToolkitError(
+            "Native whole-run scores are never averaged across runs; select exactly one run per side for this metric."
+        )
+    if not has_table(directory, "native_scores"):
+        raise ToolkitError(
+            "Capture predates native overview retrieval; recapture to compare native scores."
+        )
+    run_id = scenario["ids"][0]
+    unavailable = any(
+        e.get("status") == "unavailable" and str(e.get("path", "")).endswith("load-test-run-overview/" + run_id)
+        for e in (manifest or {}).get("endpoints", [])
+    )
+    rows = [
+        r
+        for r in load_table(directory, "native_scores")
+        if r.get("testRunId") == run_id
+        and all(r.get(k) == v for k, v in metric["match"].items())
+    ]
+    if len(rows) > 1:
+        raise ToolkitError("Native result identity is ambiguous; add match.result_group.")
+    row = rows[0] if rows else None
+    value = row.get("value") if row else None
+    return {
+        "run_id": run_id,
+        "present": row is not None,
+        "endpoint_unavailable": unavailable,
+        "value": value if numeric(value) else None,
+        "state": row.get("state") if row else None,
+    }
+
+
+def native_comparison(
+    metric: dict[str, Any], sides: list[Any], warnings: list[str]
+) -> dict[str, Any]:
+    base, cand = (native_side(d, s, metric, m) for d, m, s in sides)
+    bv, cv = base["value"], cand["value"]
+    # A delta needs two numbers from completed states; censored/in-progress states stay labeled.
+    comparable = (
+        bv is not None
+        and cv is not None
+        and base["state"] == "completed"
+        and cand["state"] == "completed"
+    )
+    delta = cv - bv if comparable else None
+    relative = delta / abs(bv) * 100 if delta is not None and bv else None
+    warning = None
+    if base["endpoint_unavailable"] or cand["endpoint_unavailable"]:
+        warning = "The overview endpoint was unavailable for at least one run; no native values exist to compare."
+    elif not base["present"] or not cand["present"]:
+        warning = "Native result absent for at least one run; no delta calculated."
+    elif base["state"] is None or cand["state"] is None:
+        warning = "This result has no vendor state, so no delta is calculated; the values are shown as returned."
+    elif not comparable:
+        warning = (
+            f"Native states {base['state']}/{cand['state']} or missing value; "
+            "no delta calculated. Values and states are retained."
+        )
+    elif bv == 0:
+        warning = "Zero baseline; relative change undefined."
+    direction = metric["direction"]
+    interpretation = "unavailable" if delta is None else "neutral"
+    if delta and direction != "neutral":
+        interpretation = "improved" if (delta < 0) == (direction == "lower") else "worsened"
+    warnings.append(
+        "Native whole-run scores are vendor values for one run per side, not means of aggregate rows."
+    )
+    return {
+        "metric": metric["name"],
+        "unit": metric["unit"],
+        "group": {},
+        "semantics": "native_score",
+        "grain": GRAIN,
+        "baseline_mean": bv,
+        "candidate_mean": cv,
+        "absolute_change": delta,
+        "relative_change_percent": relative,
+        "baseline_samples": int(bv is not None),
+        "candidate_samples": int(cv is not None),
+        "baseline_missing": int(bv is None),
+        "candidate_missing": int(cv is None),
+        "baseline_sessions": 0,
+        "candidate_sessions": 0,
+        "baseline_display": display_value(metric["match"]["resultId"], bv, base["state"]),
+        "candidate_display": display_value(metric["match"]["resultId"], cv, cand["state"]),
+        "baseline_state": base["state"],
+        "candidate_state": cand["state"],
+        "baseline_run_id": base["run_id"],
+        "candidate_run_id": cand["run_id"],
+        "direction": direction,
+        "interpretation": interpretation,
+        "warning": warning,
+    }
 
 
 def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str, Any]:
@@ -104,6 +206,9 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
     results = []
     for metric in metrics:
         table = metric.get("table")
+        if table == "native_scores":
+            results.append(native_comparison(metric, sides, warnings))
+            continue
         if table not in ("measurements", "session_metrics"):
             raise ToolkitError("Only timer and session observation comparisons are supported.")
         field = "duration" if table == "measurements" else "measurement"
@@ -178,6 +283,7 @@ def compare(baseline: Path, candidate: Path, config: dict[str, Any]) -> dict[str
                     "unit": metric["unit"],
                     "group": dict(zip(group_by, key, strict=False)),
                     "semantics": metric["semantics"],
+                    "grain": "observation_mean",
                     "baseline_mean": bv,
                     "candidate_mean": cv,
                     "absolute_change": delta,

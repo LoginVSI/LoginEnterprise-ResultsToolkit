@@ -133,7 +133,7 @@ def export_line_protocol(
         raise ToolkitError("Line protocol batch exceeds 64 MiB; narrow the capture.")
     receipt = {
         "schema_version": "line-protocol-export/1",
-        "target": "InfluxDB 3 Core 3.12.0; SQL; Grafana 13.2",
+        "target": "InfluxDB 3 Core 3.12.0; SQL; Grafana 13.3.0 (loopback proof)",
         "precision": "ns",
         "status": "prepared-not-written",
         "acquisition_status": manifest["status"],

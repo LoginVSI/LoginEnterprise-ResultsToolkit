@@ -13,6 +13,31 @@ def finite_number(value: Any) -> bool:
         return False
 
 
+def validate_native_metric(metric: dict[str, Any]) -> None:
+    """Native whole-run result: explicit result ID, unit and direction; no grouping or averaging."""
+    if (
+        metric.get("value_field") != "value"
+        or not isinstance(metric.get("unit"), str)
+        or not metric["unit"].strip()
+    ):
+        raise ToolkitError("Native score requires value_field 'value' and an explicit unit.")
+    if metric.get("semantics") != "native_score":
+        raise ToolkitError("Native score metrics declare semantics 'native_score'.")
+    if metric.get("direction") not in ("lower", "higher", "neutral"):
+        raise ToolkitError("Declare lower, higher or neutral metric direction.")
+    match = metric.get("match")
+    if (
+        not isinstance(match, dict)
+        or not isinstance(match.get("resultId"), str)
+        or set(match) - {"resultId", "result_group"}
+    ):
+        raise ToolkitError(
+            "Native score identity is match.resultId (for example eux_score or vsi_max)."
+        )
+    if metric.get("group_by", []) != [] or metric.get("exclude_values"):
+        raise ToolkitError("Native whole-run scores take no group_by or excluded values.")
+
+
 def validate_metrics(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list) or not value:
         raise ToolkitError("Configure at least one explicitly defined metric.")
@@ -30,8 +55,13 @@ def validate_metrics(value: Any) -> list[dict[str, Any]]:
             )
         names.add(key)
         table = metric.get("table")
+        if table == "native_scores":
+            validate_native_metric(metric)
+            continue
         if table not in ("measurements", "session_metrics"):
-            raise ToolkitError("Only timer and session observation comparisons are supported.")
+            raise ToolkitError(
+                "Only timer, session observation and native score comparisons are supported."
+            )
         expected = "duration" if table == "measurements" else "measurement"
         if (
             metric.get("value_field") != expected

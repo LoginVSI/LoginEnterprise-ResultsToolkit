@@ -45,7 +45,9 @@ Follow the [setup path](docs/quickstart.md), [readiness bootstrap](scripts/Test-
 - [Read-only live acceptance](docs/live-validation.md)
 - [Customer workflows and failure behavior](docs/customer-workflows.md)
 - [Compatibility and preview release checks](docs/release-readiness.md)
-- [Optional time-series file export](docs/timeseries.md)
+- [Optional time-series file export](docs/timeseries.md) and [Grafana/InfluxDB assessment](docs/grafana-influxdb-assessment.md)
+- [Native EUX/VSImax scores](docs/native-scores.md), [PDF export](docs/pdf-export.md) and [scheduled jobs](docs/scheduling.md)
+- [Power BI Service and gateway readiness](docs/gateway-readiness.md) and [backlog reconciliation](docs/backlog-matrix.md)
 - [Contributor guidance](CONTRIBUTING.md) and [independent Claude audit](docs/claude-audit.md)
 
 Licensed under [MIT](LICENSE), copyright Login VSI. This remains an unsupported community preview. Upstream reuse rights are separate; this toolkit copies no source or assets from LE-PBI-Connector.
