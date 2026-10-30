@@ -574,6 +574,11 @@ def build_report(
                     "baseline_samples",
                     "candidate_samples",
                     "warning",
+                    *(
+                        ["baseline_display", "candidate_display", "baseline_state", "candidate_state"]
+                        if native
+                        else []
+                    ),
                 ]
             )
             visual = {

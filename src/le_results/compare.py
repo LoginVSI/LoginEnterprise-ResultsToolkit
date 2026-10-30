@@ -15,7 +15,12 @@ def numeric(value: Any) -> bool:
     return type(value) in (int, float) and math.isfinite(value)
 
 
-def native_side(directory: Path, scenario: dict[str, Any], metric: dict[str, Any]) -> dict[str, Any]:
+def native_side(
+    directory: Path,
+    scenario: dict[str, Any],
+    metric: dict[str, Any],
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if len(scenario["ids"]) != 1:
         raise ToolkitError(
             "Native whole-run scores are never averaged across runs; select exactly one run per side for this metric."
@@ -25,6 +30,10 @@ def native_side(directory: Path, scenario: dict[str, Any], metric: dict[str, Any
             "Capture predates native overview retrieval; recapture to compare native scores."
         )
     run_id = scenario["ids"][0]
+    unavailable = any(
+        e.get("status") == "unavailable" and str(e.get("path", "")).endswith("load-test-run-overview/" + run_id)
+        for e in (manifest or {}).get("endpoints", [])
+    )
     rows = [
         r
         for r in load_table(directory, "native_scores")
@@ -38,6 +47,7 @@ def native_side(directory: Path, scenario: dict[str, Any], metric: dict[str, Any
     return {
         "run_id": run_id,
         "present": row is not None,
+        "endpoint_unavailable": unavailable,
         "value": value if numeric(value) else None,
         "state": row.get("state") if row else None,
     }
@@ -46,7 +56,7 @@ def native_side(directory: Path, scenario: dict[str, Any], metric: dict[str, Any
 def native_comparison(
     metric: dict[str, Any], sides: list[Any], warnings: list[str]
 ) -> dict[str, Any]:
-    base, cand = (native_side(d, s, metric) for d, _m, s in sides)
+    base, cand = (native_side(d, s, metric, m) for d, m, s in sides)
     bv, cv = base["value"], cand["value"]
     # A delta needs two numbers from completed states; censored/in-progress states stay labeled.
     comparable = (
@@ -58,8 +68,12 @@ def native_comparison(
     delta = cv - bv if comparable else None
     relative = delta / abs(bv) * 100 if delta is not None and bv else None
     warning = None
-    if not base["present"] or not cand["present"]:
+    if base["endpoint_unavailable"] or cand["endpoint_unavailable"]:
+        warning = "The overview endpoint was unavailable for at least one run; no native values exist to compare."
+    elif not base["present"] or not cand["present"]:
         warning = "Native result absent for at least one run; no delta calculated."
+    elif base["state"] is None or cand["state"] is None:
+        warning = "This result has no vendor state, so no delta is calculated; the values are shown as returned."
     elif not comparable:
         warning = (
             f"Native states {base['state']}/{cand['state']} or missing value; "

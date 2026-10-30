@@ -15,6 +15,8 @@ import tempfile
 import time
 import zlib
 from datetime import UTC, datetime
+from html import escape as html_escape
+from html import unescape
 from pathlib import Path
 from typing import Any
 
@@ -113,14 +115,13 @@ def inspect_pdf(path: Path, forbidden: list[str], expected_text: list[str]) -> d
             )
     verification = "structural"
     text_checked: list[str] = []
-    if expected_text:
-        try:
-            from pypdf import PdfReader  # optional; used only for deeper verification
-        except ImportError:
+    if expected_text or forbidden:
+        reader_class = _pdf_reader()
+        if reader_class is None:
             reader = None
         else:
             try:
-                reader = PdfReader(str(path))
+                reader = reader_class(str(path))
                 parsed_pages = len(reader.pages)
                 text = " ".join(page.extract_text() or "" for page in reader.pages)
             except Exception:  # noqa: BLE001 - any parser failure means the PDF is unusable
@@ -130,8 +131,13 @@ def inspect_pdf(path: Path, forbidden: list[str], expected_text: list[str]) -> d
         if reader is not None:
             if parsed_pages != pages:
                 raise ToolkitError("PDF page count is inconsistent.", code="pdf_invalid")
-            squashed = re.sub(r"\s+", " ", text)
-            missing = [m for m in expected_text if m not in squashed]
+            squashed = _norm(text)
+            if any(_norm(item) and _norm(item) in squashed for item in forbidden if len(item) > 6):
+                raise ToolkitError(
+                    "Rendered PDF text contains a local path or private marker; output discarded.",
+                    code="pdf_leak",
+                )
+            missing = [m for m in expected_text if _norm(m) not in squashed]
             if missing:
                 raise ToolkitError(
                     "Rendered PDF is incomplete: expected report text is missing: "
@@ -176,15 +182,53 @@ def _with_print_css(html: str) -> str:
     return re.sub(r"(<html[^>]*>)", lambda m: m.group(1) + PRINT_CSS, html, count=1)
 
 
+def _pdf_reader() -> Any:
+    """pypdf is optional; without it only structural checks run."""
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        return None
+    return PdfReader
+
+
+def _norm(text: str) -> str:
+    """Compare text across extraction differences: case, spacing and punctuation."""
+    return re.sub(r"[^0-9a-z]+", " ", text.lower()).strip()
+
+
+def _path_variants(path: str) -> set[str]:
+    """Spellings of a local path that can appear in HTML or JSON text."""
+    return {
+        v
+        for v in (
+            path,
+            path.replace("\\", "/"),
+            path.replace("\\", "\\\\"),
+            html_escape(path),
+        )
+        if len(v) > 6
+    }
+
+
+def _local_markers() -> list[str]:
+    values = [
+        str(Path.home()),
+        tempfile.gettempdir(),
+        os.environ.get("USERPROFILE", ""),
+        os.environ.get("TEMP", ""),
+    ]
+    return [v for value in values if value for v in _path_variants(value)]
+
+
 def _markers(html: str) -> list[str]:
-    title = re.search(r"<h1[^>]*>(.*?)</h1>", html, re.S)
-    markers = []
-    if title:
-        text = re.sub(r"<[^>]+>", "", title.group(1))
+    """Title and section headings that must survive printing (unescaped; normalized on compare)."""
+    markers: list[str] = []
+    for match in re.finditer(r"<h([12])[^>]*>(.*?)</h\1>", html, re.S):
+        text = unescape(re.sub(r"<[^>]+>", "", match.group(2)))
         text = re.sub(r"\s+", " ", text).strip()
-        if text:
-            markers.append(text.replace("&amp;", "&")[:60])
-    return markers
+        if text and text[:60] not in markers:
+            markers.append(text[:60])
+    return markers[:12]
 
 
 def print_report(
@@ -205,6 +249,13 @@ def print_report(
     html = source.read_text(encoding="utf-8")
     if "<head>" not in html and not re.search(r"<html[^>]*>", html):
         raise ToolkitError("Report HTML has no root element to print from.", code="pdf_invalid")
+    searchable = html.lower()
+    local = [str(report_dir.resolve()), *_local_markers()]
+    if any(v.lower() in searchable for item in local for v in _path_variants(item)):
+        raise ToolkitError(
+            "Report HTML shows a local path; rebuild it without paths before printing.",
+            code="pdf_leak",
+        )
     renderer = browser or find_browser()
     out.parent.mkdir(parents=True, exist_ok=True)
     scratch = tempfile.mkdtemp(prefix="le-pdf-")
@@ -212,7 +263,7 @@ def print_report(
         work = Path(scratch)
         page = work / "report.html"
         # Print copy only: expose collapsed evidence; the report on disk is unchanged.
-        printable = re.sub(r"<details(?![^>]*open)", "<details open", html)
+        printable = re.sub(r"<details(?=[\s>])(?![^>]*\sopen(?=[\s=>/]))", "<details open", html)
         page.write_text(_with_print_css(printable), encoding="utf-8")
         printed = work / "printed.pdf"
         command = [
@@ -223,6 +274,7 @@ def print_report(
             "--disable-extensions",
             "--disable-background-networking",
             "--host-resolver-rules=MAP * ~NOTFOUND",
+            "--proxy-server=http://127.0.0.1:9",  # IP-literal URLs cannot reach a network either
             "--no-pdf-header-footer",
             f"--user-data-dir={work / 'profile'}",
             f"--print-to-pdf={printed}",
@@ -250,8 +302,13 @@ def print_report(
         forbidden = [str(work), scratch, str(Path.home()), str(report_dir.resolve()), "file:///"]
         details = inspect_pdf(printed, forbidden, _markers(html))
         staged = out.with_name(out.name + ".partial")
-        shutil.copyfile(printed, staged)
-        os.replace(staged, out)  # Prior good PDF survives every earlier failure.
+        receipt_path = out.with_name(out.name + ".receipt.json")
+        try:
+            shutil.copyfile(printed, staged)
+            receipt_path.unlink(missing_ok=True)  # an old receipt must never describe a new PDF
+            os.replace(staged, out)  # Prior good PDF survives every earlier failure.
+        finally:
+            staged.unlink(missing_ok=True)
     finally:
         _cleanup(Path(scratch))
     receipt = {
@@ -263,7 +320,7 @@ def print_report(
         "scope": "Print of the existing HTML report; no recalculation and not a native Application PDF.",
         **details,
     }
-    write_json(out.with_name(out.name + ".receipt.json"), receipt)
+    write_json(receipt_path, receipt)
     return {
         "out": str(out),
         **{k: receipt[k] for k in ("pages", "bytes", "sha256", "verification")},

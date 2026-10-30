@@ -41,11 +41,12 @@ ALLOWED = {
     "pdf",
     "keep_runs",
     "keep_failed",
+    "lock_stale_hours",
     "limits",
 }
 LIMITS = {"max_requests", "max_pages", "page_size", "timeout", "deadline"}
 HISTORY = 20
-LOCK_STALE_HOURS = 12
+LOCK_STALE_HOURS = 3  # a scheduler time limit kills a run without cleanup
 OBSERVED = (
     ("measurements", "timestamp_utc"),
     ("session_metrics", "timestamp_utc"),
@@ -78,6 +79,11 @@ def load_job(path: Path) -> dict[str, Any]:
         raise ToolkitError("pdf is true or false.")
     if config.get("pdf") and not isinstance(config.get("report"), str):
         raise ToolkitError("A PDF is a print of the HTML report; set report as well.")
+    stale_hours = config.get("lock_stale_hours")
+    if stale_hours is not None and (
+        type(stale_hours) not in (int, float) or isinstance(stale_hours, bool) or stale_hours <= 0
+    ):
+        raise ToolkitError("lock_stale_hours must be a positive number.")
     for key in ("keep_runs", "keep_failed"):
         if key in config and (type(config[key]) is not int or config[key] < 1):
             raise ToolkitError(f"{key} must be a positive integer.")
@@ -95,33 +101,44 @@ def _resolve(base: Path, value: str) -> Path:
     return path if path.is_absolute() else (base / path).resolve()
 
 
-@contextlib.contextmanager
-def job_lock(root: Path, now: datetime) -> Iterator[None]:
-    """Exclusive create. A second run exits with job_locked; stale locks need explicit removal."""
-    lock = root / ".lock"
+def _lock_started(lock: Path) -> str | None:
     try:
-        descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    except FileExistsError:
+        value = json.loads(lock.read_text(encoding="utf-8"))["started"]
+        datetime.fromisoformat(value)
+        return str(value)
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+@contextlib.contextmanager
+def job_lock(root: Path, now: datetime, stale_hours: float = LOCK_STALE_HOURS) -> Iterator[bool]:
+    """Exclusive create. A live second run exits job_locked; a lock older than the stale limit
+    (a killed scheduler task never cleans up) is reclaimed once and the run records that."""
+    lock = root / ".lock"
+    reclaimed = False
+    for attempt in range(2):
         try:
-            started = datetime.fromisoformat(
-                json.loads(lock.read_text(encoding="utf-8"))["started"]
+            descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            started = _lock_started(lock)
+            stale = started is not None and now - datetime.fromisoformat(started) > timedelta(
+                hours=stale_hours
             )
-        except (OSError, ValueError, KeyError):
-            started = None
-        stale = started is not None and now - started > timedelta(hours=LOCK_STALE_HOURS)
-        raise ToolkitError(
-            "Another run holds the job lock"
-            + (
-                f"; it is older than {LOCK_STALE_HOURS} hours. If no run is active, delete {lock.name} in the output root and retry."
-                if stale
-                else "; this run was skipped and nothing was changed."
-            ),
-            code="job_locked",
-        ) from None
+            if attempt == 0 and stale and _lock_started(lock) == started:
+                lock.unlink(missing_ok=True)
+                reclaimed = True
+                continue
+            raise ToolkitError(
+                "Another run holds the job lock; this run was skipped and nothing was changed."
+                if not stale
+                else f"The job lock is older than {stale_hours:g} hours and could not be reclaimed; delete {lock.name} in the output root if no run is active.",
+                code="job_locked",
+            ) from None
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
         json.dump({"started": now.isoformat(), "pid": os.getpid()}, stream)
     try:
-        yield
+        yield reclaimed
     finally:
         lock.unlink(missing_ok=True)
 
@@ -147,34 +164,66 @@ def _atomic_json(path: Path, data: Any) -> None:
     os.replace(temporary, path)
 
 
-def latest_observation(captures: list[Path]) -> dict[str, Any]:
-    """Newest retained source timestamp across the captures; null when none exists."""
-    newest: str | None = None
-    for directory in captures:
+def latest_observation(captures: dict[str, Path]) -> dict[str, Any]:
+    """Newest retained source timestamp overall and per role; unparseable values are skipped.
+
+    The stalest role is what freshness checks use, so a recent candidate cannot hide an old
+    baseline.
+    """
+    by_role: dict[str, str | None] = {}
+    for role, directory in captures.items():
+        newest: str | None = None
         for table, field in OBSERVED:
             for row in load_table(directory, table):
                 value = row.get(field)
-                if isinstance(value, str) and (newest is None or value > newest):
+                if not isinstance(value, str):
+                    continue
+                try:
+                    value = utc(value)
+                except ToolkitError:
+                    continue
+                if newest is None or _instant(value) > _instant(newest):
                     newest = value
+        by_role[role] = newest
+    known = [v for v in by_role.values() if v is not None]
     return {
-        "latest_source_observation": newest,
-        "basis": "newest measurement, session-metric or aggregate-EUX timestamp in the captures",
+        "latest_source_observation": max(known, key=_instant) if known else None,
+        "stalest_role_observation": min(known, key=_instant)
+        if len(known) == len(by_role)
+        else None,
+        "observation_by_role": by_role,
+        "basis": "newest measurement, session-metric or aggregate-EUX timestamp in each capture",
     }
+
+
+def _instant(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _stamp(now: datetime, root: Path) -> str:
     base = now.strftime("%Y%m%dT%H%M%SZ")
-    stamp, n = base, 0
-    while any((root / part / stamp).exists() for part in ("runs", "failed", ".staging")):
-        n += 1
-        stamp = f"{base}-{n}"
-    return stamp
+    used = [
+        int(path.name.partition("-")[2] or 0)
+        for part in ("runs", "failed", ".staging")
+        if (root / part).is_dir()
+        for path in (root / part).iterdir()
+        if path.name == base or path.name.startswith(base + "-")
+    ]
+    # Strictly above every existing suffix, so a pruned name is never reused as "newest".
+    return f"{base}-{max(used) + 1}" if used else base
 
 
 def _prune(root: Path, part: str, keep: int | None, protect: str | None) -> None:
     if not keep or not (root / part).is_dir():
         return
-    runs = sorted(p for p in (root / part).iterdir() if p.is_dir() and STAMP.match(p.name))
+
+    def order(path: Path) -> tuple[str, int]:
+        base, _, suffix = path.name.partition("-")
+        return base, int(suffix or 0)
+
+    runs = sorted(
+        (p for p in (root / part).iterdir() if p.is_dir() and STAMP.match(p.name)), key=order
+    )
     for old in runs[: max(0, len(runs) - keep)]:
         if old.name != protect:
             shutil.rmtree(old, ignore_errors=True)
@@ -191,27 +240,34 @@ def run_job(
     base = config_path.resolve().parent
     root.mkdir(parents=True, exist_ok=True)
     started = now()
-    with job_lock(root, started):
+    with job_lock(
+        root, started, float(config.get("lock_stale_hours", LOCK_STALE_HOURS))
+    ) as reclaimed:
         status = _read_status(root)
         stamp = _stamp(started, root)
         stage = root / ".staging" / stamp
         stage.mkdir(parents=True)
         outcome: dict[str, Any] = {"stamp": stamp, "started": started.isoformat()}
+        if reclaimed:
+            outcome["reclaimed_stale_lock"] = True
         try:
             summary = _execute(config, base, stage, client_factory, now, renderer)
-        except (ToolkitError, KeyboardInterrupt, OSError, ValueError, KeyError, TypeError) as exc:
-            failed = root / "failed" / stamp
-            failed.parent.mkdir(exist_ok=True)
-            os.replace(stage, failed)
+        except (Exception, KeyboardInterrupt) as exc:
+            kept = f"failed/{stamp}"
+            try:
+                (root / "failed").mkdir(exist_ok=True)
+                os.replace(stage, root / "failed" / stamp)
+            except OSError:
+                kept = f".staging/{stamp}"  # a locked file must not hide the failure record
             if isinstance(exc, ToolkitError):
                 error = exc.diagnostic()
             elif isinstance(exc, KeyboardInterrupt):
                 error = {"code": "cancelled", "message": "Cancelled"}
-            else:
+            elif isinstance(exc, (OSError, ValueError, KeyError, TypeError)):
                 error = {"code": "invalid_input", "message": "Invalid configuration or artifact."}
-            outcome.update(
-                finished=now().isoformat(), outcome="failed", error=error, kept=f"failed/{stamp}"
-            )
+            else:
+                error = {"code": "unexpected_error", "message": type(exc).__name__}
+            outcome.update(finished=now().isoformat(), outcome="failed", error=error, kept=kept)
             status["last_attempt"] = outcome
             status["history"] = [*status.get("history", []), outcome][-HISTORY:]
             _atomic_json(root / "status.json", status)
@@ -220,12 +276,12 @@ def run_job(
                 raise
             if isinstance(exc, ToolkitError):
                 raise ToolkitError(
-                    f"Job failed ({error['code']}): {exc}. Last good output is unchanged; partial evidence is under failed/{stamp}.",
+                    f"Job failed ({error['code']}): {exc}. Last good output is unchanged; partial evidence is under {kept}.",
                     code=exc.code,
                 ) from None
             raise ToolkitError(
-                f"Job failed on invalid input. Last good output is unchanged; see failed/{stamp}.",
-                code="invalid_input",
+                f"Job failed ({error['code']}). Last good output is unchanged; see {kept}.",
+                code=str(error["code"]),
             ) from None
         (root / "runs").mkdir(exist_ok=True)
         published = root / "runs" / stamp
@@ -239,10 +295,17 @@ def run_job(
             "finished": finished,
             "published": f"runs/{stamp}",
             "latest_source_observation": summary["latest_source_observation"],
+            "stalest_role_observation": summary["stalest_role_observation"],
         }
         status["history"] = [*status.get("history", []), outcome][-HISTORY:]
-        _atomic_json(root / "latest.json", status["last_success"])
-        _atomic_json(root / "status.json", status)
+        try:
+            _atomic_json(root / "status.json", status)  # authoritative record first
+            _atomic_json(root / "latest.json", status["last_success"])
+        except OSError:
+            raise ToolkitError(
+                f"The run was published at runs/{stamp} but status bookkeeping failed; check disk space and permissions, then rerun.",
+                code="bookkeeping",
+            ) from None
         _prune(root, "runs", config.get("keep_runs"), stamp)
         return {**status["last_success"], "published": str(published)}
 
@@ -296,7 +359,7 @@ def _execute(
                 renderer = print_report
             renderer(stage / "report", stage / "report.pdf")
             outputs.append("report.pdf")
-    observation = latest_observation([directories[role] for role in ROLES])
+    observation = latest_observation({role: directories[role] for role in ROLES})
     return {
         "schema_version": "job-run/1",
         "job": config["name"],
@@ -313,28 +376,45 @@ def _execute(
 def job_status(
     root: Path, max_age_hours: float | None = None, now: datetime | None = None
 ) -> dict[str, Any]:
-    """Freshness view. ok is false for never-succeeded, failed-last-attempt or stale conditions."""
+    """Freshness view. ok is false for never-succeeded, failed-last-attempt, lock or stale data.
+
+    status.json is authoritative; latest.json is a convenience pointer.
+    """
     status = _read_status(root)
     current = now or datetime.now(UTC)
     last, attempt = status.get("last_success"), status.get("last_attempt")
     problems: list[str] = []
     if last is None:
         problems.append("no successful run yet")
+    elif not (root / str(last.get("published", ""))).is_dir():
+        problems.append("the last successful run's folder is missing")
     if attempt and attempt.get("outcome") == "failed":
         problems.append("last attempt failed; the last good output is still published")
+    lock = root / ".lock"
+    started = _lock_started(lock) if lock.exists() else None
+    if lock.exists() and (
+        started is None
+        or current - datetime.fromisoformat(started) > timedelta(hours=LOCK_STALE_HOURS)
+    ):
+        problems.append("a lock file is older than the stale limit; the next run will reclaim it")
     if last and max_age_hours is not None:
-        observed = last.get("latest_source_observation")
-        reference = observed or None
+        reference = last.get("stalest_role_observation") or last.get("latest_source_observation")
         if reference is None:
             problems.append("latest source observation is unknown")
-        elif current - datetime.fromisoformat(utc(reference).replace("Z", "+00:00")) > timedelta(
-            hours=max_age_hours
-        ):
-            problems.append(f"latest source observation is older than {max_age_hours:g} hours")
+        else:
+            try:
+                age = current - _instant(utc(reference))
+            except ToolkitError:
+                problems.append("latest source observation is unreadable")
+            else:
+                if age > timedelta(hours=max_age_hours):
+                    problems.append(
+                        f"source observation is older than {max_age_hours:g} hours (the stalest side is used)"
+                    )
     return {
         "ok": not problems,
         "problems": problems,
         "last_attempt": attempt,
         "last_success": last,
-        "locked": (root / ".lock").exists(),
+        "locked": lock.exists(),
     }

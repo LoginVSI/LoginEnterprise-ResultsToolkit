@@ -34,7 +34,7 @@ InfluxDB generations differ and must not be mixed. 2.x uses org, bucket, Flux or
 
 1. Ship C as the default. It needs nothing new.
 2. Document A as a recipe for Grafana customers only after one disposable proof. Estimated effort: about one day for a synthetic proof (Grafana OSS, Infinity, `python -m http.server` on loopback serving comparison CSV), plus half a day of documentation.
-3. Do not build a write path for B yet. Go criteria: a named customer already runs Grafana with InfluxDB 3; a disposable InfluxDB 3 instance is available; the cardinality test of the observation-hash tag passes on a realistic capture; Core query and retention limits meet the customer's history need; a batch writer with token from the vault, bounded batches, retry that is safe under replay and count reconciliation is agreed. Estimated effort once go: three to five days for the writer and its negative tests, plus a day for a pinned synthetic proof. No-go if the customer's history exceeds Core limits (consider Enterprise), or cardinality fails.
+3. Do not add a write command to the CLI. A small example writer ships instead (see the decision below); it is not a supported integration. A product-level writer would need the go criteria: a named customer already on Grafana with InfluxDB 3, a target instance, the cardinality test at their volume, Core limits that fit their history, and agreed retry rules. Estimated effort for a product writer: three to five days plus a pinned proof. No-go if their history exceeds Core limits (consider Enterprise).
 4. If the customer uses InfluxDB 2.x, B needs a different mapper and API. Treat it as a separate item.
 
 ## Option B loopback proof, 28 October 2026
@@ -59,12 +59,42 @@ Findings that matter for customers:
 
 Cleanup: processes and plugin children were stopped, ports closed, and binaries and data deleted. Setup used `influxdb3 serve --node-id proof --object-store file --data-dir <dir> --http-bind 127.0.0.1:18181 --without-auth` and `grafana server --homepath <dir>` with provisioning and paths set by `GF_PATHS_*` environment variables.
 
-Effect on the recommendation: the file-to-database path works end to end on a tiny synthetic load, so option B is technically feasible. The no-writer decision stands, because the go criteria (a customer, cardinality, limits, auth and TLS, retry rules) are untested.
+Effect on the recommendation: the file-to-database path works end to end on small synthetic loads, so option B is technically feasible. A supported CLI writer is still not justified; the second round below and the decision section set the limits of the shipped example.
 
-## Remaining acceptance plan (option A and hardening)
+## Decision, 30 October 2026
 
-1. Repeat with token authentication and TLS on loopback, a missing-value (`value_present=false`) row and a realistic capture of tens of thousands of points to measure the observation-tag cardinality.
-2. With approval for the Infinity plugin, render one panel from the synthetic comparison CSV served from loopback.
-3. Reconcile counts and one value against `receipt.json`, record versions and delete the folder afterwards.
+**Ship one maintainable example, not a product feature.** `examples/grafana-influxdb3` now holds a provisioned data source, a dashboard and a small standard-library writer (`write_lp.py`) with tests. The CLI gains no database command, no new dependency and no service to maintain. Customers who already run Grafana with InfluxDB 3 can use it; everyone else keeps HTML, PDF, CSV/JSON and Power BI. Direct Grafana JSON/CSV through the Infinity plugin is **deferred**: it needs a plugin, an HTTP file host and flattened files, it was not run, and it serves the same Grafana-only audience that the InfluxDB example already serves. Reopen it if a customer asks for a no-database Grafana path.
 
-Until then the line-protocol export stays a finite file mapper with no destination claim.
+## Second loopback round with authentication and TLS
+
+Same pinned InfluxDB 3 Core 3.12.0 (checksum re-verified), bound to 127.0.0.1 with an admin token file and a self-signed TLS certificate for 127.0.0.1 generated for the test. Synthetic data only. The writer example drove every write.
+
+| Check | Result |
+|---|---|
+| Request with a wrong token | HTTP 401 (health also needs a token once auth is on) |
+| Untrusted certificate | `SSLCertVerificationError`; nothing written |
+| Plain HTTP to the TLS port | Connection refused; the writer also refuses non-loopback `http://` |
+| Core token scopes | The CLI offers `create token --admin` only. Resource-scoped tokens were not available in Core 3.12, so the writer holds a full admin token. Network isolation or Enterprise is needed for least privilege |
+| 30,000 points in 30 batches over loopback TLS | About 30 s (roughly 1,000 points per second), complete; 30,000 distinct observation tags; data folder 13.4 MB |
+| SQL per-action mean over 30,000 points | 0.044 s; counts and means equal an independent calculation |
+| Full 30,000-point replay with no resume | About 29 s; count unchanged (idempotent for unchanged data) |
+| Resume with the same payload hash | All 30 batches skipped |
+| Changed source value at the same time and tags | Stored as an additional point; both values are queryable. It does not overwrite, so queries must choose a version |
+| Late arrival (an hour older than all data) | Accepted; minimum time moved back |
+| One malformed line in a batch (`accept_partial=false`) | The whole batch was rejected (HTTP 400) and later batches were not sent; the earlier batch stayed; after fixing the line a full replay produced 2,500 points with no duplicates |
+| Missing source value | Stored with `value_present=false` and a null value, never zero |
+| Query of data about two months old | Returned normally on this small dataset; Core's documented query and retention limits were not found on the pages read and were not stress-tested |
+
+Findings that change guidance:
+
+- Failures and completion context are not in the line-protocol points: a failed execution without a timing produces no point at all. The dashboard can show per-action counts and `value_present` coverage, but execution failures must come from the capture receipt or the comparison report. Do not read a mean of different actions, or of unequal sample counts, as a performance verdict; chart one action at a time.
+- The InfluxDB command-line client could not connect to the self-signed certificate while curl and Python could, so the CLI was not used. Cause not investigated.
+- Not tested: more than 30,000 points, concurrent writers, Core retention, crash during a write, token expiry and rotation, a certificate from a real CA, Grafana against a TLS-and-auth InfluxDB (the first round proved Grafana only against an open loopback instance).
+
+Cleanup: the server process and listener were stopped, and the binaries, data, certificate, key and token files were deleted. Receipts and logs stay in the ignored private folder.
+
+## Remaining work if a customer asks
+
+1. Provision Grafana against the TLS-and-auth server and re-render the dashboard.
+2. Measure at the customer's real volume and check Core's retention and query limits against their history needs.
+3. Add Infinity only on demand.

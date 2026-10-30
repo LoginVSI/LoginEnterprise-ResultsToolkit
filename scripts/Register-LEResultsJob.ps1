@@ -47,6 +47,7 @@ if (-not $At -or $DaysInterval -lt 1) {
 }
 $configPath = (Resolve-Path -LiteralPath $Config).Path
 $outPath = [System.IO.Path]::GetFullPath($OutRoot)
+if ($outPath.Length -gt 3) { $outPath = $outPath.TrimEnd('\', '/') }  # a trailing backslash would escape the closing quote
 $toolkitRoot = Split-Path $PSScriptRoot -Parent
 if (-not $Python) { $Python = Join-Path $toolkitRoot '.venv\Scripts\python.exe' }
 if (-not (Test-Path -LiteralPath $Python)) { throw "Python not found at $Python. Pass -Python or install the environment." }

@@ -123,7 +123,7 @@ def test_print_uses_existing_html_exposes_details_and_writes_receipt(
         target.write_bytes(make_pdf())
 
     fake_renderer(monkeypatch, good)
-    monkeypatch.setattr(pdf, "_markers", lambda html: [])  # synthetic bytes are not parseable
+    monkeypatch.setattr(pdf, "_pdf_reader", lambda: None)  # synthetic bytes are not parseable
     before = (report_dir / "report.html").read_bytes()
     out = tmp_path / "out" / "r.pdf"
     result = pdf.print_report(report_dir, out, browser=tool)
@@ -209,6 +209,62 @@ def test_standard_layout_without_head_element_is_printable(tmp_path, monkeypatch
         target.write_bytes(make_pdf())
 
     fake_renderer(monkeypatch, good)
-    monkeypatch.setattr(pdf, "_markers", lambda html: [])
+    monkeypatch.setattr(pdf, "_pdf_reader", lambda: None)
     pdf.print_report(report, tmp_path / "s.pdf", browser=tool)
     assert "@page" in captured["html"] and "<details open" in captured["html"]
+
+
+def test_source_html_with_a_local_path_is_refused_before_printing(tmp_path, monkeypatch):
+    report = tmp_path / "r"
+    report.mkdir()
+    home = str(Path.home())
+    (report / "report.html").write_text(
+        f"<html><head><title>t</title></head><body><h1>T</h1><p>{home}</p></body></html>",
+        encoding="utf-8",
+    )
+    called = []
+    monkeypatch.setattr(pdf.subprocess, "run", lambda *a, **k: called.append(1))
+    with pytest.raises(ToolkitError) as caught:
+        pdf.print_report(report, tmp_path / "x.pdf", browser=tmp_path / "b.exe")
+    assert caught.value.code == "pdf_leak" and not called
+
+
+def test_section_markers_are_unescaped_and_compared_loosely():
+    html = "<h1>Tom&#x27;s review &amp; plan</h1><section><h2>Work   completed</h2></section>"
+    assert pdf._markers(html) == ["Tom's review & plan", "Work completed"]
+    assert pdf._norm("Tom's  review & plan") in pdf._norm("x Tom’s review &  plan y")
+
+
+def test_details_already_open_is_not_duplicated_and_lookalikes_are_ignored(tmp_path, monkeypatch):
+    report = tmp_path / "d"
+    report.mkdir()
+    (report / "report.html").write_text(
+        "<html><head></head><body><h1>T</h1><details open><summary>a</summary></details>"
+        "<details data-x='reopen'><summary>b</summary></details></body></html>",
+        encoding="utf-8",
+    )
+    tool = tmp_path / "c.exe"
+    tool.write_bytes(b"")
+    seen = {}
+
+    def good(target, info):
+        seen["html"] = info["page"].read_text(encoding="utf-8")
+        target.write_bytes(make_pdf())
+
+    fake_renderer(monkeypatch, good)
+    monkeypatch.setattr(pdf, "_pdf_reader", lambda: None)
+    pdf.print_report(report, tmp_path / "o.pdf", browser=tool)
+    assert seen["html"].count("<details open") == 2 and "open open" not in seen["html"]
+
+
+def test_old_receipt_is_removed_when_a_new_pdf_replaces_it(tmp_path, report_dir, monkeypatch):
+    tool = tmp_path / "c.exe"
+    tool.write_bytes(b"")
+    out = tmp_path / "r.pdf"
+    out.write_bytes(make_pdf())
+    receipt = Path(str(out) + ".receipt.json")
+    receipt.write_text('{"sha256": "old"}')
+    fake_renderer(monkeypatch, lambda target, seen: target.write_bytes(make_pdf()))
+    monkeypatch.setattr(pdf, "_pdf_reader", lambda: None)
+    pdf.print_report(report_dir, out, replace=True, browser=tool)
+    assert json.loads(receipt.read_text())["sha256"] != "old"

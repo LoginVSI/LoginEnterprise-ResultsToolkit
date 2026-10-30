@@ -101,12 +101,95 @@ def test_concurrent_run_is_skipped_without_touching_outputs(retained):
     assert not (root / "status.json").exists() and not (root / "runs").exists()
 
 
-def test_stale_lock_message_tells_owner_what_to_do(retained):
+def test_killed_run_lock_is_reclaimed_after_the_stale_limit_and_recorded(retained):
     path, root, _ = retained
     root.mkdir()
     (root / ".lock").write_text(json.dumps({"started": T0.isoformat(), "pid": 1}))
-    with pytest.raises(ToolkitError, match="delete .lock"):
-        run_job(path, root, now=lambda: T0 + timedelta(hours=13))
+    run_job(path, root, now=lambda: T0 + timedelta(hours=4))
+    status = json.loads((root / "status.json").read_text())
+    assert status["last_attempt"]["reclaimed_stale_lock"] is True
+    assert not (root / ".lock").exists()
+
+
+def test_unreadable_lock_is_never_reclaimed(retained):
+    path, root, _ = retained
+    root.mkdir()
+    (root / ".lock").write_text("not json")
+    with pytest.raises(ToolkitError) as caught:
+        run_job(path, root, now=lambda: T0 + timedelta(days=2))
+    assert caught.value.code == "job_locked" and (root / ".lock").read_text() == "not json"
+
+
+def test_status_reports_a_stale_lock_and_a_missing_published_folder(retained):
+    path, root, _ = retained
+    run_job(path, root, now=lambda: T0)
+    (root / ".lock").write_text(json.dumps({"started": T0.isoformat(), "pid": 1}))
+    problems = job_status(root, now=T0 + timedelta(hours=5))["problems"]
+    assert any("lock file is older" in p for p in problems)
+    (root / ".lock").unlink()
+    shutil_rmtree(root / "runs" / "20261028T120000Z")
+    assert "folder is missing" in job_status(root, now=T0)["problems"][0]
+
+
+def shutil_rmtree(path):
+    import shutil
+
+    shutil.rmtree(path)
+
+
+def test_unexpected_exception_is_recorded_not_left_staged(retained):
+    path, root, _ = retained
+    run_job(path, root, now=lambda: T0)
+    good = (root / "latest.json").read_bytes()
+
+    def explode(report_dir, out):
+        raise RuntimeError("renderer bug with C:\\private\\path")
+
+    path.write_text(json.dumps({**json.loads(path.read_text()), "pdf": True}))
+    with pytest.raises(ToolkitError) as caught:
+        run_job(path, root, now=lambda: T0 + timedelta(hours=1), renderer=explode)
+    assert caught.value.code == "unexpected_error" and "private" not in str(caught.value)
+    assert (root / "latest.json").read_bytes() == good
+    assert not any((root / ".staging").iterdir())
+    status = job_status(root, now=T0 + timedelta(hours=2))
+    assert status["last_attempt"]["error"] == {
+        "code": "unexpected_error",
+        "message": "RuntimeError",
+    }
+
+
+def test_freshness_uses_the_stalest_side_and_ignores_bad_timestamps(tmp_path):
+    from le_results.evidence import TABLES, finalize, load_table, verify_capture
+    from le_results.job import latest_observation
+
+    demo(tmp_path / "d")
+    for role, stamps in (
+        ("baseline", ["N/A", "2026-09-01T10:00:00+00:00"]),
+        ("candidate", ["2026-10-01T00:00:00.5Z"]),
+    ):
+        directory = tmp_path / "d" / role
+        manifest = verify_capture(directory)
+        tables = {k: load_table(directory, k) for k in TABLES}
+        tables["measurements"] = [
+            dict(tables["measurements"][0], timestamp_utc=stamp, timestamp=stamp)
+            for stamp in stamps
+        ]
+        finalize(directory, manifest, tables)
+    result = latest_observation(
+        {"baseline": tmp_path / "d" / "baseline", "candidate": tmp_path / "d" / "candidate"}
+    )
+    assert result["observation_by_role"]["baseline"] == "2026-09-01T10:00:00Z"  # N/A skipped
+    assert result["latest_source_observation"].startswith("2026-10-01T00:00:00")
+    assert result["stalest_role_observation"] == "2026-09-01T10:00:00Z"
+
+
+def test_prune_orders_collision_suffixes_numerically(retained):
+    path, root, config = retained
+    path.write_text(json.dumps(dict(config, keep_runs=2)))
+    for _ in range(12):  # same-second runs produce -1 ... -11
+        run_job(path, root, now=lambda: T0)
+    kept = sorted(p.name for p in (root / "runs").iterdir())
+    assert "20261028T120000Z-11" in kept and "20261028T120000Z-10" in kept and len(kept) == 2
 
 
 def test_requested_pdf_failure_is_a_failed_run(retained):

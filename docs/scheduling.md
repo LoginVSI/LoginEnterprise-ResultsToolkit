@@ -28,9 +28,10 @@ le-results job status --out-root D:\reports\weekly --max-age-hours 30
 
 ## Guarantees
 
-- One run stages into `.staging/<stamp>` and publishes with a single rename to `runs/<stamp>`. A concurrent run exits 3 (`job_locked`) and changes nothing. A stale lock is never removed automatically.
+- One run stages into `.staging/<stamp>` and publishes with a single rename to `runs/<stamp>`. A concurrent run exits 3 (`job_locked`) and changes nothing. A lock older than `lock_stale_hours` (default 3, set above your task's time limit) is reclaimed once, because a scheduler that kills a run cannot clean up; the reclaim is recorded in `status.json`. An unreadable lock is never reclaimed.
 - A partial or failed capture, comparison, report or requested PDF stops the run. The staging directory moves to `failed/<stamp>` for diagnosis, `latest.json` is not touched and the exit code is 2. Earlier runs are kept.
-- `status.json` keeps `last_attempt`, `last_success` and `latest_source_observation` apart. A run that succeeds over old data reports old data. `job status` fails when there is no success, the last attempt failed, or the newest source observation exceeds `--max-age-hours`.
+- `status.json` (authoritative; `latest.json` is a pointer) keeps `last_attempt`, `last_success` and the source observation apart. A run that succeeds over old data reports old data. Timestamps are parsed, unparseable ones are skipped, and freshness checks use the stalest of the baseline and candidate so a recent side cannot hide an old one. `job status` fails when there is no success, its folder is missing, the last attempt failed, a lock is overdue, or the source observation exceeds `--max-age-hours`.
+- Any unexpected error is also recorded as a failed attempt (`unexpected_error`, class name only) and the staging folder moves to `failed/`. A failure to write bookkeeping after publishing is reported as `bookkeeping`.
 - Same-second runs get distinct names. Deletion is opt-in (`keep_runs`, `keep_failed`) and never removes the run `latest.json` names.
 
 ## Snapshots, windows and rolling data
@@ -41,6 +42,6 @@ A job over fixed selections is a repeatable snapshot. Refreshing a fixed histori
 
 The job reads the profile and the native vault as the account the scheduler runs under. Credentials enrolled by another account are not available to it. Enroll as the scheduled account (`le-results auth set`, hidden input) and run `le-results doctor` as that account. Keep strict TLS and any approved profile trust; do not disable verification to fix a scheduled failure. Give the account write access only to `--out-root`.
 
-Windows Task Scheduler: create a task for the user that owns the vault. The action is the full path of the virtual environment's `le-results` executable with arguments `job run --config ... --out-root ...`. Use "Run only when user is logged on" unless that account's vault is confirmed usable in a non-interactive session. Linux and macOS: a user-level systemd timer or cron entry under the same rule, after checking the keyring backend works without a desktop session. Native Linux and macOS vault behavior is not verified.
+Windows Task Scheduler: `scripts/Register-LEResultsJob.ps1` builds the task for you (dry run by default, explicit time and interval, `-Disabled` to create it off, `-Show`, `-Unregister -Apply`). It runs the virtual environment's Python with `-I -m le_results.cli job run --config ... --out-root ...` as you, interactive logon only, with a two-hour limit and no overlapping runs. There is no log redirection; read `status.json` and the task's last result. Use "Run only when user is logged on" unless that account's vault is confirmed usable in a non-interactive session. Linux and macOS: a user-level systemd timer or cron entry under the same rule, after checking the keyring backend works without a desktop session. Native Linux and macOS vault behavior is not verified.
 
 After a failure, read `status.json`, inspect the endpoint outcomes in the failed run's capture manifests, fix the cause and rerun. Earlier runs stay valid. Exit codes: 0 success, 2 failure, 3 skipped because another run is active.

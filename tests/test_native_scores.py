@@ -288,3 +288,39 @@ def test_native_report_adds_native_source_table_and_columns(pair, tmp_path):
     )
     assert (out / "data" / "Source_native_scores.json").is_file()
     assert "baseline_state" in json.loads((out / "data" / "Comparison.json").read_text())[0]
+
+
+def test_result_without_vendor_state_gets_no_delta_and_says_why(pair):
+    b, c, config = pair
+    for directory, run in ((b, BASE), (c, CANDIDATE)):
+        response = overview(run)
+        response["results"][0]["results"]["loginTime"] = [
+            {"resultId": "total_login_time", "value": 5.4}
+        ]
+        seed(directory, run, response)
+    config["metrics"] = [
+        {
+            **config["metrics"][0],
+            "name": "Login",
+            "match": {"resultId": "total_login_time"},
+            "unit": "source unit",
+        }
+    ]
+    row = compare(b, c, config)["metrics"][0]
+    assert row["baseline_mean"] == 5.4 and row["absolute_change"] is None
+    assert "no vendor state" in row["warning"]
+
+
+def test_unavailable_overview_endpoint_is_named_in_the_warning(pair):
+    b, c, config = pair
+    seed(b, BASE, overview(BASE))
+    seed(c, CANDIDATE, overview(CANDIDATE))
+    seed_empty = {k: load_table(c, k) for k in TABLES}
+    seed_empty["native_scores"] = []
+    manifest = verify_capture(c)
+    manifest["endpoints"].append(
+        {"path": "load-test-run-overview/" + CANDIDATE, "status": "unavailable", "count": 0}
+    )
+    finalize(c, manifest, seed_empty)
+    row = compare(b, c, config)["metrics"][0]
+    assert "endpoint was unavailable" in row["warning"] and row["candidate_mean"] is None

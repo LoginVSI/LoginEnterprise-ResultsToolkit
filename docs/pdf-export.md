@@ -17,7 +17,9 @@ No pip package and no administrator rights. The command finds Microsoft Edge, Go
 
 - Prints a temporary copy of `report.html` at A4 landscape with print styles, collapsed evidence sections opened, charts and panels kept whole and table headers repeated. The report on disk is never modified.
 - Runs the browser headless with its own throwaway profile and name resolution disabled.
-- Verifies the PDF: valid header and end marker, a countable page count, non-trivial content, no local path or home directory in the file and, when `pypdf` is available, the report title text. Failures carry a code: `pdf_invalid`, `pdf_blank`, `pdf_leak`, `pdf_incomplete`, `pdf_timeout`, `pdf_failed`, `pdf_renderer_missing`.
+- Refuses to print when the report HTML itself shows a local path (the folder, your home or temp folders), because the PDF is a print of that HTML.
+- Verifies the PDF. Always: header and end marker (a file cut short loses its end marker), a countable page count, non-trivial content, and the same local-path strings in metadata and streams. With `pypdf` installed it also extracts the text, checks that the title and section headings are present and rescans for local paths. Without `pypdf` those text checks are skipped and the receipt says `verification: structural`. Rendered glyph text is not byte-searchable, so the text check needs `pypdf`. Failures carry a code: `pdf_invalid`, `pdf_blank`, `pdf_leak`, `pdf_incomplete`, `pdf_timeout`, `pdf_failed`, `pdf_renderer_missing`.
+- Blocks name resolution and routes any other request to a dead proxy, so a report cannot fetch anything while printing.
 - Writes the PDF only after verification, through a rename. `--replace` swaps an existing PDF only after success; on any failure the previous file is untouched.
 - Writes `<name>.pdf.receipt.json` with hashes, page count, renderer name, synthetic flag and verification level. The receipt holds no paths.
 
