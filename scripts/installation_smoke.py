@@ -97,6 +97,24 @@ def main() -> None:
         cwd=run_dir,
         check=True,
     )
+    (run_dir / "report.json").write_text(
+        '{"schema_version": "report/1", "title": "Smoke", "visuals": ["comparison_table"]}',
+        encoding="utf-8",
+    )
+    (run_dir / "job.json").write_text(
+        '{"schema_version": "job/1", "name": "smoke", "baseline_capture": "synthetic/baseline", '
+        '"candidate_capture": "synthetic/candidate", "comparison": "synthetic/compare.json", '
+        '"report": "report.json"}',
+        encoding="utf-8",
+    )
+    for arguments in (
+        ["job", "run", "--config", "job.json", "--out-root", "jobs"],
+        ["job", "status", "--out-root", "jobs"],
+        ["report-pdf", "--help"],
+    ):
+        subprocess.run(
+            [str(python), "-I", "-m", "le_results.cli", *arguments], cwd=run_dir, check=True
+        )
     print(
         "Fresh wheel installation and "
         + ("outside-checkout" if args.external else "outside-src")
