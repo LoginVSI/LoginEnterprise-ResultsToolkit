@@ -12,7 +12,7 @@ license-files = ["LICENSE"]
 dependencies = ["httpx>=0.28.1,<0.29", "keyring>=25.6,<26", "platformdirs>=4.3,<5", "cryptography>=50,<51"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "jsonschema>=4.23,<5", "build>=1.2,<2", "pip-audit>=2.8,<3", "pypdf>=6.21.2,<7", "setuptools>=84.1,<85"]
+dev = ["pytest>=8.3,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "jsonschema>=4.23,<5", "build>=1.2,<2", "pip-audit>=2.8,<3", "pypdf>=6.21.4,<7", "setuptools>=84.1,<85"]
 
 [project.scripts]
 le-results = "le_results.cli:main"
