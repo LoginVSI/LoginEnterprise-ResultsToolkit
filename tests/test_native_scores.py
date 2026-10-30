@@ -220,7 +220,7 @@ def test_older_comparison_without_grain_still_builds(pair, tmp_path):
         {"schema_version": "report/1", "title": "t", "visuals": ["comparison_table"]},
     )
     rows = json.loads((tmp_path / "old" / "data" / "Comparison.json").read_text())
-    assert rows[0]["grain"] == "observation_mean"
+    assert "grain" not in rows[0]  # native columns appear only for native comparisons
 
 
 def test_vsimax_above_threshold_is_a_lower_bound_not_exact_capacity(pair, tmp_path):
@@ -257,3 +257,34 @@ def test_display_keeps_source_precision_and_states():
     assert display_value("eux_score", None, "disabled") == "unavailable (disabled)"
     assert display_value("vsi_max", 6.0, "belowSessionCount") == "6 (belowSessionCount)"
     assert display_value("total_login_time", 47.2, None) == "47.2"  # no unit inferred
+
+
+def test_duration_only_report_keeps_the_accepted_model_shape(tmp_path):
+    demo(tmp_path / "d")
+    config = json.loads((tmp_path / "d" / "compare.json").read_text())
+    comparison = compare(tmp_path / "d" / "baseline", tmp_path / "d" / "candidate", config)
+    out = tmp_path / "r"
+    build_report(
+        comparison,
+        out,
+        {"schema_version": "report/1", "title": "t", "visuals": ["comparison_table"]},
+    )
+    assert not (out / "data" / "Source_native_scores.json").exists()
+    assert "native_scores" not in (next(out.rglob("model.bim"))).read_text(encoding="utf-8")
+    columns = json.loads((out / "data" / "Comparison.json").read_text())[0]
+    assert not {"grain", "baseline_state", "baseline_display"} & set(columns)
+    assert "<th>Grain</th>" not in next(out.glob("*.html")).read_text(encoding="utf-8")
+
+
+def test_native_report_adds_native_source_table_and_columns(pair, tmp_path):
+    b, c, config = pair
+    seed(b, BASE, overview(BASE))
+    seed(c, CANDIDATE, overview(CANDIDATE))
+    out = tmp_path / "n"
+    build_report(
+        compare(b, c, config),
+        out,
+        {"schema_version": "report/1", "title": "t", "visuals": ["comparison_table"]},
+    )
+    assert (out / "data" / "Source_native_scores.json").is_file()
+    assert "baseline_state" in json.loads((out / "data" / "Comparison.json").read_text())[0]
