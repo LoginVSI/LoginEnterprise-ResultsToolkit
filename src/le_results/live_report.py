@@ -44,10 +44,15 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
     if sum(len(config[role]["ids"]) for role in roles) > 4:
         raise ToolkitError("The preview live connector permits at most four results per refresh.")
     metrics = validate_metrics(config.get("metrics"))
-    if any(metric.get("table") == "native_scores" for metric in metrics):
-        raise ToolkitError(
-            "Native whole-run scores are available in captures, comparisons and snapshot reports; the refreshable connector does not retrieve the Load overview yet."
-        )
+    native_metrics = [m for m in metrics if m.get("table") == "native_scores"]
+    metrics = [m for m in metrics if m.get("table") != "native_scores"]
+    if native_metrics:
+        if kind != "LoadTest":
+            raise ToolkitError("Native whole-run scores apply to Load results only.")
+        if any(len(config[role]["ids"]) != 1 for role in roles):
+            raise ToolkitError(
+                "Native whole-run scores need exactly one result per side; they are never pooled."
+            )
     for metric in metrics:
         if not isinstance(metric.get("name"), str) or not metric["name"].strip():
             raise ToolkitError("Every metric requires a nonempty name.")
@@ -80,7 +85,8 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         ):
             raise ToolkitError("Session metrics must group by instance, fieldName and unit.")
     # Only allowed fields are serialized into M. Never accept a token parameter.
-    acquisition = {k: config[k] for k in ("test_type", *roles, "metrics")}
+    acquisition = {k: config[k] for k in ("test_type", *roles)}
+    acquisition["metrics"] = metrics
     acquisition["schema_version"] = "acquisition/2" if single else "acquisition/1"
     acquisition.update({k: config[k] for k in ("start", "end", "rolling_hours") if k in config})
 
@@ -98,6 +104,7 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
                 reject_secrets(item)
 
     reject_secrets(config)
+    native_acquisition = {**acquisition, "metrics": native_metrics}
     placeholder = {
         "schema_version": "live-placeholder/1",
         **{role: config[role] for role in roles},
@@ -137,6 +144,15 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         + ")"
     )
     (directory / "Acquisition.pq").write_text(query + "\n", encoding="utf-8")
+    native_query = (
+        "ResultsToolkit.Native("
+        + m_string(origin)
+        + ", "
+        + m_string(json.dumps(native_acquisition, ensure_ascii=True))
+        + ")"
+    )
+    if native_metrics:
+        (directory / "NativeAcquisition.pq").write_text(native_query + "\n", encoding="utf-8")
     write_json(directory / "live-report-spec.json", {**config, "origin": origin})
     columns = [
         "row_kind",
@@ -251,7 +267,7 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
                 "formatString": "0",
             }
         )
-    model = {
+    model: dict[str, Any] = {
         "name": "ResultsToolkit",
         "compatibilityLevel": 1600,
         "model": {
@@ -290,18 +306,82 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
             ],
         },
     }
+    native_measures: list[dict[str, str]] = []
+    if native_metrics:
+        completed = 'NativeScores[state] = "completed"'
+
+        def native_side(label: str) -> str:
+            # One run per side is enforced, so a completed score has exactly one row.
+            return (
+                "IF(HASONEVALUE(NativeScores[result_id]) && CALCULATE(COUNTROWS(NativeScores), "
+                f"NativeScores[scenario] = {label}, {completed}) = 1, "
+                f"CALCULATE(MAX(NativeScores[value]), NativeScores[scenario] = {label}, {completed}))"
+            )
+
+        if single:
+            native_measures = [
+                {"name": "Native Score", "expression": native_side(base_label), "formatString": "0.0"}
+            ]
+        else:
+            native_measures = [
+                {
+                    "name": "Baseline Native Score",
+                    "expression": native_side(base_label),
+                    "formatString": "0.0",
+                },
+                {
+                    "name": "Candidate Native Score",
+                    "expression": native_side(candidate_label),
+                    "formatString": "0.0",
+                },
+                {
+                    "name": "Native Change",
+                    "expression": "IF(NOT ISBLANK([Baseline Native Score]) && NOT ISBLANK([Candidate Native Score]), [Candidate Native Score] - [Baseline Native Score])",
+                    "formatString": "0.0",
+                },
+            ]
+        text_columns = (
+            "scenario run_id metric_name result_id result_group unit state display_value "
+            "availability test_name counter run_state test_result score_grain provenance "
+            "source_endpoint source_json captured_at capture_status"
+        ).split()
+        model["model"]["tables"].append(
+            {
+                "name": "NativeScores",
+                "columns": [
+                    {"name": n, "dataType": "string", "sourceColumn": n, "summarizeBy": "none"}
+                    for n in text_columns
+                ]
+                + [
+                    {
+                        "name": "value",
+                        "dataType": "double",
+                        "sourceColumn": "value",
+                        "summarizeBy": "none",
+                    }
+                ],
+                "measures": native_measures,
+                "partitions": [
+                    {
+                        "name": "NativeScores",
+                        "mode": "import",
+                        "source": {"type": "m", "expression": [native_query]},
+                    }
+                ],
+            }
+        )
     write_json(directory / "Results.SemanticModel" / "model.bim", model)
     page = directory / "Results.Report" / "definition" / "pages" / "comparison"
 
-    def field(name: str, measure: bool = False) -> dict[str, Any]:
+    def field(name: str, measure: bool = False, entity: str = "Results") -> dict[str, Any]:
         return {
             "field": {
                 "Measure" if measure else "Column": {
-                    "Expression": {"SourceRef": {"Entity": "Results"}},
+                    "Expression": {"SourceRef": {"Entity": entity}},
                     "Property": name,
                 }
             },
-            "queryRef": "Results." + name,
+            "queryRef": entity + "." + name,
             "nativeQueryRef": name,
         }
 
@@ -369,6 +449,17 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
             350,
         ),
     ]
+    if native_metrics:
+        native_values = [
+            field(n, entity="NativeScores")
+            for n in ("scenario", "metric_name", "display_value", "state", "unit")
+        ] + [field(m["name"], True, "NativeScores") for m in native_measures]
+        if not metrics:
+            # Native-only: the timer visuals would be empty, so keep coverage and add the native table.
+            visuals = [(*visuals[3][:3], 0, 450, 1260, 350)]
+        visuals.append(
+            ("native_table", "tableEx", {"Values": {"projections": native_values}}, 0, 810 if metrics else 0, 1260, 300 if metrics else 430)
+        )
     for z, (name, visual_type, query_state, x, y, width, height) in enumerate(visuals):
         write_json(
             page / "visuals" / name / "visual.json",
@@ -392,6 +483,12 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         "Refresh and reconcile with a Python capture for the identical IDs/window. "
         "A failed refresh is an error, not successful empty data. Rolling windows resolve once per query evaluation. "
         "Subsequent refreshes repeat acquisition; new-data proof requires advancing source timestamps. "
-        "This is not streaming. Record Desktop acceptance for this specific project and build.\n",
+        "This is not streaming. Record Desktop acceptance for this specific project and build.\n"
+        + (
+            "NativeScores holds the vendor's whole-run score per run from the Load overview. "
+            "A change appears only when both states are completed; a VSImax above threshold is a lower bound.\n"
+            if native_metrics
+            else ""
+        ),
         encoding="utf-8",
     )

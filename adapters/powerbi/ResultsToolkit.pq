@@ -5,6 +5,9 @@ section ResultsToolkit;
 shared ResultsToolkit.Rows = Value.ReplaceType(RowsImpl, RowsType);
 
 [DataSource.Kind="ResultsToolkit"]
+shared ResultsToolkit.Native = Value.ReplaceType(NativeImpl, RowsType);
+
+[DataSource.Kind="ResultsToolkit"]
 shared ResultsToolkit.Ping = Value.ReplaceType((origin as text) as any => Get(Origin(origin), "system/version", [], 0), type function (origin as (Uri.Type)) as any);
 
 RowsType = type function (
@@ -184,4 +187,75 @@ RowsImpl = (origin as text, configuration as text) as table =>
         captured = Table.AddColumn(result,"captured_at",each DateTimeZone.ToText(end,"yyyy-MM-ddTHH:mm:ss.fffZ"),type text),
         dedup = Table.AddColumn(captured,"deduplicated_rows",each Text.From(Table.RowCount(raw)-Table.RowCount(result)),type text),
         complete = Table.AddColumn(dedup,"capture_status",each "complete selected endpoint acquisition",type text)
+    in complete;
+
+// Native whole-run scores from the Load result overview. A separate table so the timestamped
+// rows from ResultsToolkit.Rows keep their own grain. Values are never computed or averaged here.
+NativeEmpty = type table [scenario=text, run_id=text, metric_name=text, result_id=text,
+    result_group=nullable text, unit=text, value=nullable number, state=nullable text,
+    display_value=text, availability=text, test_name=nullable text, counter=nullable number,
+    run_state=nullable text, test_result=nullable text, score_grain=text, provenance=text,
+    source_endpoint=text, source_json=text];
+
+NativeDisplay = (resultId as text, value as nullable number, state as nullable text) as text =>
+    let shown = if value = null then null else Text.From(value, "en-US")
+    in if shown = null then "unavailable" & (if state = null then "" else " (" & state & ")")
+       else if resultId = "vsi_max" and state = "aboveThreshold" then ">" & shown
+       else if state <> null and state <> "completed" then shown & " (" & state & ")"
+       else shown;
+
+NativeRowsFor = (origin as text, scenario as text, runId as text, metrics as list, deadline as datetimezone) as list =>
+    let id = Id(runId),
+        run = Get(origin, "test-runs/" & id, [], 0, deadline),
+        checkedRun = if Record.FieldOrDefault(run,"type",null) <> "LoadTest" or Record.FieldOrDefault(run,"id",null) <> id
+                     then error Error.Record("Selection","Native scores apply to Load results; returned identity/type differs from selection.",null)
+                     else if Record.FieldOrDefault(run,"finished",null) = null then error Error.Record("Selection","Select completed runs.",null) else run,
+        overview = Get(origin, "load-test-run-overview/" & id, [], 0, deadline),
+        entries = Record.FieldOrDefault(overview,"results",null),
+        valid = Value.Is(entries,type list) and List.Count(entries) > 0
+                and List.AllTrue(List.Transform(entries, (e) => Value.Is(e,type record) and Record.FieldOrDefault(e,"testRunId",null) = id)),
+        entry = if valid then List.First(entries) else error Error.Record("Identity","Native overview identity differs from selected run.",null),
+        results = Record.FieldOrDefault(entry,"results",[]),
+        performance = Record.FieldOrDefault(results,"performance",[]),
+        flat = List.Combine({
+            List.Transform(Record.FieldOrDefault(performance,"results",{}), (i) => [group="performance", item=i,
+                state=if Text.StartsWith(Record.FieldOrDefault(i,"resultId",""),"eux_") then Record.FieldOrDefault(performance,"euxState",null)
+                      else if Record.FieldOrDefault(i,"resultId",null) = "vsi_max" then Record.FieldOrDefault(performance,"vsiMaxState",null) else null]),
+            List.Transform(Record.FieldOrDefault(results,"loginTime",{}), (i) => [group="loginTime", item=i, state=null]),
+            List.Select({[group="appPerformance", item=Record.FieldOrDefault(Record.FieldOrDefault(results,"appPerformanceResult",[]),"totalAppPerformance",null), state=null]}, (a) => a[item] <> null)}),
+        rows = List.Transform(metrics, (m) =>
+            let wanted = m[match][resultId], group = Record.FieldOrDefault(m[match],"result_group",null),
+                hits = List.Select(flat, (f) => Record.FieldOrDefault(f[item],"resultId",null) = wanted and (group = null or f[group] = group)),
+                hit = if List.Count(hits) > 1 then error Error.Record("Identity","Native result identity is ambiguous; set match.result_group.",null)
+                      else if List.Count(hits) = 1 then hits{0} else null,
+                raw = if hit = null then null else Record.FieldOrDefault(hit[item],"value",null),
+                value = if Value.Is(raw,type number) and not Number.IsNaN(raw) and raw <> #infinity and raw <> -#infinity then raw else null,
+                state = if hit = null then null else hit[state]
+            in [scenario=scenario, run_id=id, metric_name=m[name], result_id=wanted, result_group=if hit = null then group else hit[group],
+                unit=m[unit], value=value, state=state, display_value=NativeDisplay(wanted, value, state),
+                availability=if hit = null then "absent-from-overview" else if value = null then "null-in-overview" else "present",
+                test_name=Record.FieldOrDefault(entry,"testName",null), counter=Record.FieldOrDefault(entry,"counter",null),
+                run_state=Record.FieldOrDefault(entry,"state",null), test_result=Record.FieldOrDefault(entry,"testResult",null),
+                score_grain="native_whole_run", provenance="native_overview", source_endpoint="load-test-run-overview/{id}",
+                source_json=Text.FromBinary(Json.FromValue(if hit = null then [] else SafeSource(hit[item])),TextEncoding.Utf8)])
+    in if checkedRun = null then {} else rows;
+
+NativeImpl = (origin as text, configuration as text) as table =>
+    let host = Origin(origin), rawConfig = Json.Document(configuration),
+        single = Record.FieldOrDefault(rawConfig,"schema_version",null) = "acquisition/2",
+        sides = if single then {rawConfig[selected]} else {rawConfig[baseline],rawConfig[candidate]},
+        metrics = List.Select(rawConfig[metrics], (m) => Record.FieldOrDefault(m,"table",null) = "native_scores"),
+        ok = List.Contains({"acquisition/1","acquisition/2"},Record.FieldOrDefault(rawConfig,"schema_version",null))
+             and rawConfig[test_type] = "LoadTest" and List.Count(metrics) > 0
+             and List.AllTrue(List.Transform(sides, (s) => List.Count(s[ids]) = 1))
+             and List.AllTrue(List.Transform(metrics, (m) => Record.FieldOrDefault(m,"semantics",null) = "native_score"
+                 and Record.FieldOrDefault(m,"value_field",null) = "value" and Value.Is(Record.FieldOrDefault(Record.FieldOrDefault(m,"match",[]),"resultId",null),type text))),
+        config = if ok then rawConfig else error Error.Record("Selection","Native scores need a Load selection with one result per side and native_scores metrics.",null),
+        end = DateTimeZone.FixedUtcNow(), deadline = end+#duration(0,0,5,0),
+        records = List.Combine(List.Transform(sides, (s) => NativeRowsFor(host, s[label], s[ids]{0}, metrics, deadline))),
+        raw = Table.Buffer(Table.FromRecords(records, NativeEmpty, MissingField.Error)),
+        errorCheck = Table.RowCount(Table.SelectRowsWithErrors(raw)),
+        result = if errorCheck > 0 then error Error.Record("Contract", "Native acquisition contains invalid cells; refresh refused.", null) else raw,
+        captured = Table.AddColumn(result,"captured_at",each DateTimeZone.ToText(end,"yyyy-MM-ddTHH:mm:ss.fffZ"),type text),
+        complete = Table.AddColumn(captured,"capture_status",each "complete native overview acquisition",type text)
     in complete;

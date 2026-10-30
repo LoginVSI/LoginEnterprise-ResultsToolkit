@@ -4,9 +4,19 @@ datasources:
     uid: leinflux
     type: influxdb
     access: proxy
-    url: http://127.0.0.1:18181
+    # Use https and a CA you trust. Do not set tlsSkipVerify.
+    url: https://localhost:8181
     jsonData:
       version: SQL
       dbName: leproof
       httpMode: POST
-      insecureGrpc: true
+      insecureGrpc: false
+      tlsAuthWithCACert: true
+    secureJsonData:
+      # Grafana expands environment variables in provisioning files. Keep the token out of this file.
+      token: ${INFLUXDB3_TOKEN}
+      # Paste the public CA certificate (PEM) that signed the InfluxDB server certificate.
+      tlsCACert: |
+        -----BEGIN CERTIFICATE-----
+        replace with your CA certificate
+        -----END CERTIFICATE-----

@@ -95,6 +95,24 @@ Cleanup: the server process and listener were stopped, and the binaries, data, c
 
 ## Remaining work if a customer asks
 
-1. Provision Grafana against the TLS-and-auth server and re-render the dashboard.
+1. Done on 30 October (see the third round above).
 2. Measure at the customer's real volume and check Core's retention and query limits against their history needs.
 3. Add Infinity only on demand.
+
+## Third round: Grafana against the authenticated TLS server (30 October 2026)
+
+Same pinned InfluxDB 3 Core 3.12.0 and Grafana OSS 13.3.0 (both checksums re-verified), loopback only, synthetic data, user-local, no elevation. A one-day disposable CA signed the server certificate (SAN `localhost` and `127.0.0.1`). The data source used `tlsAuthWithCACert` with that CA, never skip-verify, and an expiring admin token passed through an environment variable.
+
+| Check | Result |
+|---|---|
+| Writer to the TLS server with `--ca-file` | 9 and 8 synthetic points, both receipts complete |
+| Grafana data source health with the CA | OK |
+| Same URL without the CA (negative) | Refused: certificate signed by unknown authority. The data source was deleted afterward |
+| Python default trust against the same server | Refused |
+| Summary query through Grafana versus direct SQL | 6 rows, points, missing values and means identical |
+| Time series panel versus direct SQL | 17 values across 9 timestamps, equal to 17 direct points |
+| Rendered dashboard | Real screenshot, synthetic label visible, per-run and per-action counts and missing values shown |
+
+The dashboard table now groups by result, action and metric so a mean never mixes actions, and shows sample count, missing values and first and last observation. Failure and completion context is still not in the points; read it from the capture receipt.
+
+Limits that remain: Core has admin tokens only, so the token has full rights; scoped tokens are not available. Core history, query-range and retention limits were not found in the pages read and were not stress-tested. This proves one tiny synthetic set on loopback, not production scale, another Grafana or InfluxDB version, a certificate from a public CA or a networked deployment. Disposable processes, data, certificates and tokens were deleted; only receipts and a screenshot remain in the ignored private folder.
