@@ -4,6 +4,12 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Closeout record, 2026-10-31
+
+- PR 4 merged as `3c08add` after all seven jobs passed on its head `dd4aba4`; main CI passed on the merge commit. A development-only pypdf pin was raised to 6.21.4 after new advisories.
+- Desktop acceptance of the native snapshot columns and the live `NativeScores` table has not been run: the LE-PBI session has not released the shared Desktop slot. Candidates are staged privately. These stay **implemented, not runtime-verified**.
+- Unchanged and still unverified: Power BI Service and gateway refresh (no approved tenant), Linux/macOS/ARM/standard-user/clean-machine proof, fresh Continuous observations. No recurring job is enabled.
+
 ### Follow-up, 2026-10-30
 
 - Refreshable connector: `ResultsToolkit.Native` and a separate `NativeScores` table, generated only for Load configurations with native metrics. M parser and PBIP schema checks and source/model tests pass; it is not executed in Desktop or the Service.
