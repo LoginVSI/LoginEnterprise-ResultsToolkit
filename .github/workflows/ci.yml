@@ -39,6 +39,8 @@ jobs:
       - run: python scripts/validate_powerbi.py artifacts/live-report
       - run: le-results report-live --config examples/continuous-selected-report.json --out artifacts/selected-live-report
       - run: python scripts/validate_powerbi.py artifacts/selected-live-report
+      - run: le-results report-live --config examples/live-native-report.json --out artifacts/native-live-report
+      - run: python scripts/validate_powerbi.py artifacts/native-live-report
       - run: le-results export-line-protocol --capture artifacts/walkthrough/baseline --out artifacts/line-protocol
       - run: python -m venv --system-site-packages .venv
         if: runner.os == 'Windows'
@@ -62,5 +64,6 @@ jobs:
       - run: le-results report-live --config examples/live-report.json --out artifacts/live-report
       - run: le-results report-live --config examples/continuous-report.json --out artifacts/continuous-report
       - run: le-results report-live --config examples/continuous-selected-report.json --out artifacts/selected-live-report
+      - run: le-results report-live --config examples/live-native-report.json --out artifacts/native-live-report
       - run: npm ci --ignore-scripts --prefix scripts/powerquery-validation
-      - run: node scripts/validate_m.cjs scripts/powerquery-validation adapters/powerbi/ResultsToolkit.pq artifacts/live-report/Acquisition.pq artifacts/continuous-report/Acquisition.pq artifacts/selected-live-report/Acquisition.pq tests/fixtures/connector-table-type.pq
+      - run: node scripts/validate_m.cjs scripts/powerquery-validation adapters/powerbi/ResultsToolkit.pq artifacts/live-report/Acquisition.pq artifacts/continuous-report/Acquisition.pq artifacts/selected-live-report/Acquisition.pq artifacts/native-live-report/NativeAcquisition.pq tests/fixtures/connector-table-type.pq

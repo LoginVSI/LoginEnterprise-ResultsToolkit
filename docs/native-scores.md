@@ -33,9 +33,10 @@ Rules enforced by the engine:
 - A delta needs two numeric values and both states equal to `completed`. Otherwise values and states are shown, the delta is unavailable and the warning names the states. Censored VSImax states (`belowSessionCount`, `belowThreshold`, `aboveThreshold`) are never subtracted.
 - A null value stays unavailable. It is never zero.
 - Captures made before this feature lack the table. Comparing native scores against one is refused with an instruction to recapture.
+- The HTML and PDF report show the grain column and mark values whose state is not `completed` inline, for example `unavailable (disabled)`. A `completed` state is carried in the comparison JSON and the Power BI comparison table, not as its own HTML column.
 - Native columns and the `Source_native_scores` table appear only in reports that compare native scores, so timing and resource projects keep the accepted model shape. Only `performance` results (`eux_*`, `vsi_max`) carry a vendor state; login-time and application-performance results are retained as returned and never get a delta. Result rows carry `grain` (`native_whole_run` or `observation_mean`), plus states and run IDs for native rows. HTML and the Power BI snapshot `Comparison` table show `grain`, `baseline_state` and `candidate_state`. The `baseline_mean` column holds the vendor value for native rows.
 
-The toolkit does not implement an EUX algorithm, weight aggregate rows or infer capacity from VSImax. The refreshable Power Query connector does not retrieve the overview yet, and `report-live` refuses native metrics with that message. The review layout accepts duration comparisons only.
+The toolkit does not implement an EUX algorithm, weight aggregate rows or infer capacity from VSImax. The refreshable connector has a separate `ResultsToolkit.Native` function and `report-live` adds a `NativeScores` table when a Load configuration lists `native_scores` metrics (one result per side, never pooled; see `examples/live-native-report.json`). That path is implemented, parser- and schema-checked and covered by source tests, but it has not been executed in Power BI Desktop or the Service, so a snapshot result does not prove it. The review layout accepts duration comparisons only.
 
 ## Reconciliation status
 

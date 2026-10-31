@@ -336,3 +336,75 @@ def test_unhashable_timer_reference_remains_unresolved_evidence(tmp_path):
     result = verify_capture(capture)
     assert result["relationship_coverage"]["timer_execution_links"]["unresolved"] == 1
     assert load_table(capture, "measurements")[0]["appExecutionId"] == {"unexpected": "object"}
+
+
+def _native_live_config():
+    return json.loads((ROOT / "examples/live-native-report.json").read_text())
+
+
+def test_native_live_project_adds_a_separate_table_and_leaves_timing_projects_alone(tmp_path):
+    build_live_report(_native_live_config(), tmp_path / "native")
+    model = check_references(tmp_path / "native")
+    tables = {t["name"]: t for t in model["model"]["tables"]}
+    assert set(tables) == {"Results", "NativeScores"}
+    assert "ResultsToolkit.Native(" in (tmp_path / "native/NativeAcquisition.pq").read_text()
+    results_query = (tmp_path / "native/Acquisition.pq").read_text()
+    assert "native_scores" not in results_query  # aggregate/timestamped rows stay separate
+    measures = {m["name"]: m["expression"] for m in tables["NativeScores"]["measures"]}
+    assert set(measures) == {"Baseline Native Score", "Candidate Native Score", "Native Change"}
+    assert all("AVERAGE" not in e and "SUM(" not in e for e in measures.values())
+    assert all('"completed"' in measures[n] for n in ("Baseline Native Score", "Candidate Native Score"))
+    visuals = (tmp_path / "native/Results.Report/definition/pages/comparison/visuals")
+    assert (visuals / "native_table/visual.json").exists()
+    assert not (visuals / "comparison_table").exists()  # native-only: no empty timer visuals
+
+    plain = json.loads((ROOT / "examples/live-report.json").read_text())
+    build_live_report(plain, tmp_path / "plain")
+    assert not (tmp_path / "plain/NativeAcquisition.pq").exists()
+    assert len(check_references(tmp_path / "plain")["model"]["tables"]) == 1
+
+
+def test_native_live_mixed_config_keeps_timer_visuals_and_splits_acquisition(tmp_path):
+    config = _native_live_config()
+    timer = json.loads((ROOT / "examples/live-report.json").read_text())["metrics"][0]
+    config["metrics"].append(timer)
+    build_live_report(config, tmp_path)
+    query = json.loads(
+        (tmp_path / "Acquisition.pq").read_text().split(", ", 1)[1].rsplit(")", 1)[0].replace('""', '"')[1:-1]
+    )
+    assert [m["table"] for m in query["metrics"]] == ["measurements"]
+    assert (tmp_path / "Results.Report/definition/pages/comparison/visuals/comparison_table").exists()
+
+
+@pytest.mark.parametrize(
+    "change,message",
+    [("continuous", "Continuous|Load results only"), ("pooled", "exactly one result per side")],
+)
+def test_native_live_refuses_inapplicable_selection(tmp_path, change, message):
+    config = _native_live_config()
+    if change == "continuous":
+        config["test_type"] = "ContinuousTest"
+    else:
+        config["baseline"]["ids"].append("33333333-3333-4333-8333-333333333333")
+    with pytest.raises(ToolkitError, match=message):
+        build_live_report(config, tmp_path / "x")
+    assert not (tmp_path / "x").exists()
+
+
+def test_connector_native_function_guards_identity_state_and_never_aggregates():
+    source = (ROOT / "adapters/powerbi/ResultsToolkit.pq").read_text()
+    native = source[source.index("NativeRowsFor") : source.index("NativeImpl =")]
+    assert "shared ResultsToolkit.Native" in source
+    for guard in (
+        '"LoadTest"',
+        'Record.FieldOrDefault(e,"testRunId",null) = id',
+        '"euxState"',
+        '"vsiMaxState"',
+        '">" & shown',
+        'Record.FieldOrDefault(run,"finished",null) = null',
+        "absent-from-overview",
+        "MissingField.Error",
+    ):
+        assert guard in source, guard
+    assert "List.Average" not in native and "List.Sum" not in native and "Number.Round" not in native
+    assert "load-test-run-overview/" in native

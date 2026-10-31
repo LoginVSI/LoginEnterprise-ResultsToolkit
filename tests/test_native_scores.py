@@ -324,3 +324,19 @@ def test_unavailable_overview_endpoint_is_named_in_the_warning(pair):
     finalize(c, manifest, seed_empty)
     row = compare(b, c, config)["metrics"][0]
     assert "endpoint was unavailable" in row["warning"] and row["candidate_mean"] is None
+
+
+def test_native_html_rounds_percent_and_tabulates_coverage_but_data_keeps_precision(pair, tmp_path):
+    b, c, config = pair
+    seed(b, BASE, overview(BASE, score=7.0))
+    seed(c, CANDIDATE, overview(CANDIDATE, score=8.5))
+    out = tmp_path / "report"
+    build_report(
+        compare(b, c, config),
+        out,
+        {"schema_version": "report/1", "title": "t", "visuals": ["comparison_table"]},
+    )
+    html = next(out.glob("*.html")).read_text(encoding="utf-8")
+    assert "<td>21.43</td>" in html and "<pre>" not in html and "<th>Measure</th>" in html
+    rows = json.loads((out / "data" / "Comparison.json").read_text())
+    assert rows[0]["relative_change_percent"] == pytest.approx(21.428571428571427)

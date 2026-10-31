@@ -4,6 +4,12 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Follow-up, 2026-10-30
+
+- Refreshable connector: `ResultsToolkit.Native` and a separate `NativeScores` table, generated only for Load configurations with native metrics. M parser and PBIP schema checks and source/model tests pass; it is not executed in Desktop or the Service.
+- Continuous: the earlier note that an empty 48-hour window meant collection was off is withdrawn. The captured test definition says `isEnabled: false`, which is consistent but not proof of cause.
+- Backlog reconciled into completed, implemented-not-runtime-verified, externally blocked and deferred ([matrix](backlog-matrix.md)). Historical unchecked boxes below are superseded.
+
 ### Native scores, PDF and scheduled jobs, 2026-10-28
 
 Branch `feat/native-eux-pdf-scheduling` from merged `20b6a50`. The inspection found no existing overview retrieval: earlier captures held only aggregate `eux-results` rows and whatever score fields the run object carried. This pass adds native whole-run scores, an optional PDF print, a one-shot job and the assessments below. See the [backlog matrix](backlog-matrix.md) for every disposition.
@@ -18,7 +24,7 @@ Local checks (30 October): 235 tests passed and 1 opt-in real-browser test (run 
 
 ### Closeout, 2026-10-30
 
-A separate-context review found no high-severity defect and several medium issues, all fixed and retested ([record](audit-2026-10-30.md)). Native columns and the native source table now appear only when a report compares native scores, so timing and resource projects keep the model, queries and visuals accepted earlier (confirmed byte-identical apart from the evidence copy). New or changed Power BI behavior for native reports has official-schema and M-parser checks only and is **Desktop-pending**; the LE-PBI session holds the shared Desktop slot and nothing was installed or opened. The refreshable connector still does not retrieve the native overview. Scheduler registration tooling is verified (dry run, one disabled register and removal); no recurring task exists. A Power BI Service and gateway runbook is written ([readiness](gateway-readiness.md)); no tenant was available. Incremental ingestion remains deferred with a documented design. Linux, macOS, ARM, native non-Windows vault, standard-user and clean-machine proof remain unavailable.
+A separate-context review found no high-severity defect and several medium issues, all fixed and retested ([record](audit-2026-10-30.md)). Native columns and the native source table now appear only when a report compares native scores, so timing and resource projects keep the model, queries and visuals accepted earlier (confirmed byte-identical apart from the evidence copy). New or changed Power BI behavior for native reports has official-schema and M-parser checks only and is **Desktop-pending**; the LE-PBI session holds the shared Desktop slot and nothing was installed or opened. The refreshable connector now has a native overview table (see the 30 October follow-up), not yet executed in Desktop. Scheduler registration tooling is verified (dry run, one disabled register and removal); no recurring task exists. A Power BI Service and gateway runbook is written ([readiness](gateway-readiness.md)); no tenant was available. Incremental ingestion remains deferred with a documented design. Linux, macOS, ARM, native non-Windows vault, standard-user and clean-machine proof remain unavailable.
 
 ### Preview closeout review, 2026-10-23
 

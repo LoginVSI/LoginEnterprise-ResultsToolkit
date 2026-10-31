@@ -2,6 +2,12 @@
 
 ## Community preview, unreleased
 
+- Raise the development-only pypdf pin to 6.21.4 (official hashes) after new advisories; runtime dependencies are unchanged.
+
+- Verify Grafana 13.3.0 against the authenticated TLS InfluxDB 3 Core example on loopback with synthetic data and certificate validation (health check fails without the CA). The example data source now uses HTTPS with a supplied CA, and the dashboard table shows sample counts and missing values per run and action.
+
+- Add native whole-run scores to the refreshable Power BI connector (`ResultsToolkit.Native`, separate `NativeScores` table, completed-only change measures). Implemented and parser-checked; not yet run in Desktop or the Service. Correct the Continuous note: an empty window does not show why, and the captured definition was disabled.
+
 - Retrieve native whole-run EUX/VSImax results from the Load overview into a separate `native_scores` table and compare them per run with vendor states. Label aggregate-interval `eux` rows and never average native scores across runs.
 - Add `report-pdf`, an optional verified PDF print of an existing HTML report using a user-local Edge, Chrome or Chromium. No new pip dependency or administrator rights.
 - Add `job run` and `job status` for scheduler-driven capture/report runs that publish only complete output and separate last attempt, last success and source freshness.

@@ -67,6 +67,29 @@ NATIVE_FIELDS = (
 )
 
 
+def _coverage_table(coverage: list[dict[str, Any]]) -> str:
+    """Readable coverage for native reports; nested values stay as compact JSON text."""
+    keys = [k for k in dict.fromkeys(k for row in coverage for k in row) if k != "scenario"]
+
+    def text(value: Any) -> str:
+        if isinstance(value, (dict, list)):
+            return json.dumps(value, sort_keys=True)
+        return "unavailable" if value is None else str(value)
+
+    head = "<th>Measure</th>" + "".join(
+        "<th>" + html.escape(str(row.get("scenario", ""))) + "</th>" for row in coverage
+    )
+    body = "".join(
+        "<tr><td>"
+        + html.escape(k.replace("_", " "))
+        + "</td>"
+        + "".join("<td>" + html.escape(text(row.get(k))) + "</td>" for row in coverage)
+        + "</tr>"
+        for k in keys
+    )
+    return "<table><tr>" + head + "</tr>" + body + "</table>"
+
+
 def build_report(
     comparison: dict[str, Any],
     directory: Path,
@@ -604,17 +627,18 @@ def build_report(
                 "visual": visual,
             },
         )
+    def cell(r: dict[str, Any], k: str) -> str:
+        value = r.get(DISPLAY_FIELD.get(k, k)) or (
+            r.get(k) if r.get(k) is not None else "unavailable"
+        )
+        if native and k == "relative_change_percent" and isinstance(value, float):
+            return f"{value:.2f}"  # the data files keep full precision
+        return str(value)
+
     html_rows = "".join(
         "<tr>"
         + "".join(
-            "<td>"
-            + html.escape(
-                str(
-                    r.get(DISPLAY_FIELD.get(k, k))
-                    or (r.get(k) if r.get(k) is not None else "unavailable")
-                )
-            )
-            + "</td>"
+            "<td>" + html.escape(cell(r, k)) + "</td>"
             for k in (
                 "metric_group",
                 "unit",
@@ -672,9 +696,13 @@ def build_report(
         )
         + "</p>"
         + comparison_section
-        + "<h2>Coverage</h2><pre>"
-        + html.escape(json.dumps(comparison["coverage"], indent=2))
-        + "</pre><h2>Evidence limits</h2><ul>"
+        + "<h2>Coverage</h2>"
+        + (
+            _coverage_table(comparison["coverage"])
+            if native
+            else "<pre>" + html.escape(json.dumps(comparison["coverage"], indent=2)) + "</pre>"
+        )
+        + "<h2>Evidence limits</h2><ul>"
         + warnings
         + "</ul></html>"
     )
