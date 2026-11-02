@@ -116,3 +116,7 @@ Same pinned InfluxDB 3 Core 3.12.0 and Grafana OSS 13.3.0 (both checksums re-ver
 The dashboard table now groups by result, action and metric so a mean never mixes actions, and shows sample count, missing values and first and last observation. Failure and completion context is still not in the points; read it from the capture receipt.
 
 Limits that remain: Core has admin tokens only, so the token has full rights; scoped tokens are not available. Core history, query-range and retention limits were not found in the pages read and were not stress-tested. This proves one tiny synthetic set on loopback, not production scale, another Grafana or InfluxDB version, a certificate from a public CA or a networked deployment. Disposable processes, data, certificates and tokens were deleted; only receipts and a screenshot remain in the ignored private folder.
+
+## Owner walkthrough (2 November 2026)
+
+The example was recreated locally for the owner on loopback with the same pinned versions, a fresh disposable CA, token authentication and a provisioned dashboard that opens populated on the fixture's UTC window, with result and one-action selectors, per-action counts, missing values and timings, and a replay check (a full re-send left 17 points and 17 distinct observation IDs unchanged). The data-source health check and dashboard queries reconciled with the engine for every result and action. The owner's own walkthrough is **pending**; this remains a synthetic local demo, not a production or customer deployment.
