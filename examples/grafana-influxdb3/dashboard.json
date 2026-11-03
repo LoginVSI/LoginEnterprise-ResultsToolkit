@@ -1,7 +1,41 @@
-{"uid":"leproof","title":"LE synthetic proof","schemaVersion":39,"timezone":"utc","time":{"from":"2026-09-01T09:50:00Z","to":"2026-09-01T10:20:00Z"},"panels":[
-{"id":1,"type":"timeseries","title":"Timer observations by run (ms, SYNTHETIC)","gridPos":{"x":0,"y":0,"w":24,"h":9},"datasource":{"type":"influxdb","uid":"leinflux"},
- "fieldConfig":{"defaults":{"unit":"ms","custom":{"drawStyle":"points","pointSize":8}},"overrides":[]},
- "transformations":[{"id":"partitionByValues","options":{"fields":["result_id"],"keepFields":false}}],
- "targets":[{"refId":"A","datasource":{"type":"influxdb","uid":"leinflux"},"rawQuery":true,"rawSql":"SELECT time, value, result_id FROM le_measurements WHERE $__timeFilter(time) AND value_present = true ORDER BY time","format":"time_series"}]},
-{"id":2,"type":"table","title":"Sample count, missing values and mean per run and action (SYNTHETIC)","gridPos":{"x":0,"y":9,"w":24,"h":9},"datasource":{"type":"influxdb","uid":"leinflux"},
- "targets":[{"refId":"A","datasource":{"type":"influxdb","uid":"leinflux"},"rawQuery":true,"rawSql":"SELECT result_id, application_id, metric_id, count(*) AS points, sum(CASE WHEN value_present THEN 0 ELSE 1 END) AS missing_values, min(time) AS first_observation, max(time) AS last_observation, avg(value) AS mean_ms FROM le_measurements WHERE $__timeFilter(time) GROUP BY result_id, application_id, metric_id ORDER BY application_id, result_id","format":"table"}]}]}
+{
+  "uid": "leproof",
+  "title": "LE synthetic proof",
+  "schemaVersion": 39,
+  "timezone": "utc",
+  "time": {"from": "2026-09-01T09:50:00Z", "to": "2026-09-01T10:20:00Z"},
+  "refresh": "",
+  "tags": ["login-enterprise", "synthetic"],
+  "templating": {
+    "list": [
+      {
+        "name": "run", "label": "Result (baseline or candidate)", "type": "query", "multi": true, "includeAll": true,
+        "datasource": {"type": "influxdb", "uid": "leinflux"},
+        "query": "SELECT DISTINCT result_id FROM le_measurements WHERE $__timeFilter(time) ORDER BY result_id",
+        "refresh": 2, "sort": 1, "current": {"selected": true, "text": "All", "value": "$__all"}
+      },
+      {
+        "name": "action", "label": "Action (one at a time)", "type": "query", "multi": false, "includeAll": false,
+        "datasource": {"type": "influxdb", "uid": "leinflux"},
+        "query": "SELECT DISTINCT application_id FROM le_measurements WHERE $__timeFilter(time) ORDER BY application_id",
+        "refresh": 2, "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {"id": 3, "type": "text", "title": "Read this first (SYNTHETIC)", "gridPos": {"x": 0, "y": 0, "w": 24, "h": 4},
+     "options": {"mode": "markdown", "content": "Synthetic example data, not a customer or production result. **Chart one action at a time:** timings from different actions are different measurements, so no mean across actions is shown. Only executions that recorded a timing become points here; **a failed execution has no timing point and is not counted as zero**. Failures and run completion are in the companion HTML/PDF report from the same capture."}},
+    {"id": 1, "type": "timeseries", "title": "Selected action: timer observations by result (ms, SYNTHETIC)", "gridPos": {"x": 0, "y": 4, "w": 24, "h": 9},
+     "datasource": {"type": "influxdb", "uid": "leinflux"},
+     "fieldConfig": {"defaults": {"unit": "ms", "custom": {"drawStyle": "points", "pointSize": 9}}, "overrides": []},
+     "transformations": [{"id": "partitionByValues", "options": {"fields": ["result_id"], "keepFields": false}}],
+     "targets": [{"refId": "A", "datasource": {"type": "influxdb", "uid": "leinflux"}, "rawQuery": true,
+       "rawSql": "SELECT time, value, result_id FROM le_measurements WHERE $__timeFilter(time) AND application_id = '${action}' AND result_id IN (${run:singlequote}) AND value_present = true ORDER BY time",
+       "format": "time_series"}]},
+    {"id": 2, "type": "table", "title": "Timing points, missing values and mean per result and action (SYNTHETIC)", "gridPos": {"x": 0, "y": 13, "w": 24, "h": 9},
+     "datasource": {"type": "influxdb", "uid": "leinflux"},
+     "targets": [{"refId": "A", "datasource": {"type": "influxdb", "uid": "leinflux"}, "rawQuery": true,
+       "rawSql": "SELECT application_id, result_id, metric_id, count(*) AS timing_points, sum(CASE WHEN value_present THEN 0 ELSE 1 END) AS missing_values, min(time) AS first_observation, max(time) AS last_observation, min(value) AS min_ms, avg(value) AS mean_ms, max(value) AS max_ms FROM le_measurements WHERE $__timeFilter(time) AND result_id IN (${run:singlequote}) GROUP BY application_id, result_id, metric_id ORDER BY application_id, result_id",
+       "format": "table"}]}
+  ]
+}
