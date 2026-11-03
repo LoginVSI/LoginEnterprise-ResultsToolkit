@@ -2,6 +2,8 @@
 
 ## Community preview, unreleased
 
+- Record owner-reported acceptance of the local synthetic Grafana and InfluxDB 3 demo (dashboard, selectors, refresh, companion report counts). It does not cover production, automatic ingestion or scheduled refresh.
+
 - Raise the development-only pypdf pin to 6.21.4 (official hashes) after new advisories; runtime dependencies are unchanged.
 
 - Verify Grafana 13.3.0 against the authenticated TLS InfluxDB 3 Core example on loopback with synthetic data and certificate validation (health check fails without the CA). The example data source now uses HTTPS with a supplied CA, and the dashboard table shows sample counts and missing values per run and action.

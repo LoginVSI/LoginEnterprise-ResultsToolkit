@@ -4,6 +4,11 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Grafana demo acceptance, 2026-11-02
+
+- Owner-reported local synthetic-demo acceptance of the Grafana and InfluxDB 3 example: The owner reported that the synthetic dashboard rendered, the action and result selectors worked and Refresh left the values unchanged. The companion HTML showed 9 candidate executions, 8 successes, 1 failure and 1 missing timing, and Export workbook showed 3 baseline timing points and 2 candidate points. Not extended to production, automatic ingestion or scheduled refresh. PR 6 (`9f320d5`) carries the dashboard changes; main CI passed.
+- Power BI Desktop acceptance of native snapshot columns and the live `NativeScores` table is still pending.
+
 ### Closeout record, 2026-10-31
 
 - PR 4 merged as `3c08add` after all seven jobs passed on its head `dd4aba4`; main CI passed on the merge commit. A development-only pypdf pin was raised to 6.21.4 after new advisories.
