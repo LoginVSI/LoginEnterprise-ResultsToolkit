@@ -1,6 +1,6 @@
 # Power BI Service and gateway readiness
 
-This is preparation, not acceptance. No tenant, workspace or gateway was available, and none was provisioned. The Toolkit does not build a gateway and does not reuse the LE-PBI connector, its credentials or its API target. Each connector is accepted on its own evidence.
+This is preparation, not acceptance. Toolkit Service and gateway refresh was **not tested**: this project did not provision or use a workspace, gateway or tenant. The Toolkit does not build a gateway and does not reuse the LE-PBI connector, its credentials or its API target. Each connector is accepted on its own evidence, so LE-PBI's gateway results do not validate this connector. A refresh through a gateway also concerns local files: snapshot projects that read local JSON files need those files reachable by the gateway service account to refresh, which is separate from the live connector's appliance access.
 
 ## What the Toolkit connector provides
 

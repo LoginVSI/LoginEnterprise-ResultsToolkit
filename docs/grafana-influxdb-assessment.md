@@ -39,6 +39,8 @@ InfluxDB generations differ and must not be mixed. 2.x uses org, bucket, Flux or
 
 ## Option B loopback proof, 28 October 2026
 
+*Historical round, superseded in part: its "token authentication and TLS were not exercised" statements are true of this round only. The third round and the owner walkthrough below exercised Grafana against the authenticated, CA-validated TLS server.*
+
 Pinned and checksum-verified official Windows x64 artifacts: InfluxDB 3 Core 3.12.0 (SHA-256 matched the published `.sha256` file) and Grafana OSS 13.3.0 (SHA-256 matched the download page). Grafana 13.3.0 replaced the 13.2.x originally planned because it was current and is at least 13.2. Both ran as the current user, bound to 127.0.0.1, under an ignored private folder. InfluxDB used `--without-auth` on loopback only, so **token authentication and TLS were not exercised**.
 
 What was shown, using the synthetic three-action review capture (baseline 9 timings, candidate 8 because one failed execution has no timing):
@@ -66,6 +68,8 @@ Effect on the recommendation: the file-to-database path works end to end on smal
 **Ship one maintainable example, not a product feature.** `examples/grafana-influxdb3` now holds a provisioned data source, a dashboard and a small standard-library writer (`write_lp.py`) with tests. The CLI gains no database command, no new dependency and no service to maintain. Customers who already run Grafana with InfluxDB 3 can use it; everyone else keeps HTML, PDF, CSV/JSON and Power BI. Direct Grafana JSON/CSV through the Infinity plugin is **deferred**: it needs a plugin, an HTTP file host and flattened files, it was not run, and it serves the same Grafana-only audience that the InfluxDB example already serves. Reopen it if a customer asks for a no-database Grafana path.
 
 ## Second loopback round with authentication and TLS
+
+*Historical round: "Grafana against a TLS-and-auth InfluxDB" is listed as untested here; the third round below covered it.*
 
 Same pinned InfluxDB 3 Core 3.12.0 (checksum re-verified), bound to 127.0.0.1 with an admin token file and a self-signed TLS certificate for 127.0.0.1 generated for the test. Synthetic data only. The writer example drove every write.
 
