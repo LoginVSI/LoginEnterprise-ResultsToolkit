@@ -4,6 +4,18 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Final closeout and offline retention, 2026-11-04
+
+Where each claim stands, in five classes. Dated sections below stay as written; where they say "pending" or "no tenant", this section and the Desktop section after it supersede them.
+
+- **Implemented:** native whole-run scores in the Python engine, HTML, PDF and snapshot projects; `ResultsToolkit.Native` and the `NativeScores` table in the refreshable connector; the Grafana and InfluxDB 3 example; the one-shot job; the metric guide.
+- **Owner-observed:** the owner opened the synthetic native snapshot project (`Results.pbip`) in Power BI Desktop and judged the visuals good enough. This is a visual inspection only. No refresh, numeric reconciliation, save/reopen check or screenshot is recorded for it. Earlier owner acceptances (20 and 22 October snapshot and fixed-window live projects, the 2 November local Grafana demo) keep the scope they were recorded with.
+- **Runtime-reconciled:** the Desktop engine results below (snapshot values queried; private two-run live copy refreshed, 8 rows matching retained captures and the live API); read-only appliance captures of one EUX-enabled and one EUX-disabled Load run.
+- **Untested:** the Toolkit connector in the Power BI Service or through a gateway (the Toolkit Service/gateway refresh was not tested; LE-PBI's own gateway results do not validate this connector); fresh Continuous observations (LE-PBI owns that testing); non-Windows, standard-user, clean-machine and ARM runs.
+- **Deferred:** incremental ingestion, Power BI incremental refresh, Infinity, InfluxDB 2, a connector freshness table.
+
+The test appliance (`bpleva02`) is being retired on 5 November. Retained captures, normalized tables, manifests, HTML/PDF and the synthetic projects open without it. Real-source live projects need an available appliance to refresh again, and a project definition is not a backup of the source data. Open-offline paths and the evidence backup are listed in the private evidence index (`.private\evidence-backup-20261104\EVIDENCE-INDEX.md`, ignored by Git). The snapshot project's model points at absolute paths, so it opens only where `C:\Repos\LoginEnterprise-ResultsToolkit\.private\campaign-final\assets-work\report\data` exists, or after its sources are re-pointed.
+
 ### Desktop acceptance of native candidates, 2026-11-04
 
 Partial runtime results, recorded exactly. The LE-PBI session released Desktop, the connector was replaced with a hash check and backup (only `ResultsToolkit.mez`), and working copies of the candidates were used.
@@ -20,17 +32,17 @@ Partial runtime results, recorded exactly. The LE-PBI session released Desktop, 
 ### Grafana demo acceptance, 2026-11-02
 
 - Owner-reported local synthetic-demo acceptance of the Grafana and InfluxDB 3 example: The owner reported that the synthetic dashboard rendered, the action and result selectors worked and Refresh left the values unchanged. The companion HTML showed 9 candidate executions, 8 successes, 1 failure and 1 missing timing, and Export workbook showed 3 baseline timing points and 2 candidate points. Not extended to production, automatic ingestion or scheduled refresh. PR 6 (`9f320d5`) carries the dashboard changes; main CI passed.
-- Power BI Desktop acceptance of native snapshot columns and the live `NativeScores` table is still pending.
+- Power BI Desktop acceptance of native snapshot columns and the live `NativeScores` table was still pending on 2 November. **Superseded:** it ran on 4 November (see above).
 
 ### Closeout record, 2026-10-31
 
 - PR 4 merged as `3c08add` after all seven jobs passed on its head `dd4aba4`; main CI passed on the merge commit. A development-only pypdf pin was raised to 6.21.4 after new advisories.
-- Desktop acceptance of the native snapshot columns and the live `NativeScores` table has not been run: the LE-PBI session has not released the shared Desktop slot. Candidates are staged privately. These stay **implemented, not runtime-verified**.
-- Unchanged and still unverified: Power BI Service and gateway refresh (no approved tenant), Linux/macOS/ARM/standard-user/clean-machine proof, fresh Continuous observations. No recurring job is enabled.
+- (Superseded on 4 November.) On 31 October, Desktop acceptance of the native snapshot columns and the live `NativeScores` table had not run because the shared Desktop slot was not released.
+- Unchanged and still unverified (Service/gateway refresh of this connector was not tested), Linux/macOS/ARM/standard-user/clean-machine proof, fresh Continuous observations. No recurring job is enabled.
 
 ### Follow-up, 2026-10-30
 
-- Refreshable connector: `ResultsToolkit.Native` and a separate `NativeScores` table, generated only for Load configurations with native metrics. M parser and PBIP schema checks and source/model tests pass; it is not executed in Desktop or the Service.
+- Refreshable connector: `ResultsToolkit.Native` and a separate `NativeScores` table, generated only for Load configurations with native metrics. M parser and PBIP schema checks and source/model tests pass; it was not executed in Desktop or the Service at that date (Desktop acceptance followed on 4 November; the Service was not tested).
 - Continuous: the earlier note that an empty 48-hour window meant collection was off is withdrawn. The captured test definition says `isEnabled: false`, which is consistent but not proof of cause.
 - Backlog reconciled into completed, implemented-not-runtime-verified, externally blocked and deferred ([matrix](backlog-matrix.md)). Historical unchecked boxes below are superseded.
 

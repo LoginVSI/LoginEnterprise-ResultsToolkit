@@ -2,6 +2,8 @@
 
 ## Community preview, unreleased
 
+- Reconcile the active documentation after the 4 November Desktop acceptance: separate implemented, owner-observed, runtime-reconciled, untested and deferred; record the owner's visual inspection of the synthetic native snapshot project (visual only); say plainly that Toolkit Service/gateway refresh and fresh Continuous observations were not tested and that LE-PBI results do not validate this connector; note that real-source live projects need an available appliance and that snapshot projects use absolute local paths.
+
 - Fix two defects found in Power BI Desktop: a rejected Key token now gives an authentication message instead of "null to Logical", and native live projects show every native row (disabled and above-threshold ones were hidden by blank measures). Record the Desktop acceptance results.
 
 - Native-only live Power BI projects no longer include the timer query (which is bounded to ten sessions); a zero native baseline now says so. Add a metric guide, a bug-hunt record and a short Patch Validation Gate cross-reference.
@@ -12,7 +14,7 @@
 
 - Verify Grafana 13.3.0 against the authenticated TLS InfluxDB 3 Core example on loopback with synthetic data and certificate validation (health check fails without the CA). The example data source now uses HTTPS with a supplied CA, and the dashboard table shows sample counts and missing values per run and action.
 
-- Add native whole-run scores to the refreshable Power BI connector (`ResultsToolkit.Native`, separate `NativeScores` table, completed-only change measures). Implemented and parser-checked; not yet run in Desktop or the Service. Correct the Continuous note: an empty window does not show why, and the captured definition was disabled.
+- Add native whole-run scores to the refreshable Power BI connector (`ResultsToolkit.Native`, separate `NativeScores` table, completed-only change measures). Implemented and parser-checked; later refreshed in Desktop on a private copy (see the Desktop-fix entry above); not run in the Service. Correct the Continuous note: an empty window does not show why, and the captured definition was disabled.
 
 - Retrieve native whole-run EUX/VSImax results from the Load overview into a separate `native_scores` table and compare them per run with vendor states. Label aggregate-interval `eux` rows and never average native scores across runs.
 - Add `report-pdf`, an optional verified PDF print of an existing HTML report using a user-local Edge, Chrome or Chromium. No new pip dependency or administrator rights.
