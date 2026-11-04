@@ -2,6 +2,8 @@
 
 ## Community preview, unreleased
 
+- Fix two defects found in Power BI Desktop: a rejected Key token now gives an authentication message instead of "null to Logical", and native live projects show every native row (disabled and above-threshold ones were hidden by blank measures). Record the Desktop acceptance results.
+
 - Native-only live Power BI projects no longer include the timer query (which is bounded to ten sessions); a zero native baseline now says so. Add a metric guide, a bug-hunt record and a short Patch Validation Gate cross-reference.
 
 - Record owner-reported acceptance of the local synthetic Grafana and InfluxDB 3 demo (dashboard, selectors, refresh, companion report counts). It does not cover production, automatic ingestion or scheduled refresh.

@@ -45,7 +45,11 @@ Get = (origin as text, path as text, query as record, attempt as number, optiona
             Query=query, Headers=[Accept="application/json", Authorization="Bearer " & Extension.CurrentCredential()[Key]],
             ManualCredentials=true, ManualStatusHandling=List.RemoveItems({300..599},{401,403}),
             Timeout=#duration(0,0,0,List.Min({20,remaining})), IsRetry=attempt > 0]),
-        metadata = Value.Metadata(response), status = Record.FieldOrDefault(metadata, "Response.Status", 200),
+        metadata = Value.Metadata(response),
+        // A rejected token (401/403) returns a Response.Status field whose value is null. Comparing it
+        // would end in a misleading "null to Logical" error, so name the likely cause instead.
+        status = let s = Record.FieldOrDefault(metadata, "Response.Status", 200)
+                 in if s = null then error Error.Record("Authentication", "The appliance rejected the credential (no HTTP status). Re-enter the Key token under Data source settings.", null) else s,
         headers = Record.FieldOrDefault(metadata, "Headers", []),
         retryHeader = Record.FieldOrDefault(headers, "Retry-After", null),
         parsedSeconds = try Number.FromText(retryHeader) otherwise null,

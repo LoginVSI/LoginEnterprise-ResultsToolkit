@@ -454,34 +454,56 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
             350,
         ),
     ]
+    pages: dict[str, list[Any]] = {"comparison": visuals}
     if native_metrics:
-        native_values = [
+        # Power BI hides a table row when every measure on it is blank, which would hide exactly the
+        # disabled, unavailable and above-threshold rows. The first table therefore uses columns only
+        # and shows every row; the measures sit in a second table that lists comparable scores.
+        every_row = [
             field(n, entity="NativeScores")
-            for n in ("scenario", "metric_name", "display_value", "state", "unit")
-        ] + [field(m["name"], True, "NativeScores") for m in native_measures]
-        if not metrics:
-            # Native-only: no Results table exists, so only the native table is shown.
-            visuals = []
-        visuals.append(
-            ("native_table", "tableEx", {"Values": {"projections": native_values}}, 0, 810 if metrics else 0, 1260, 300 if metrics else 600)
-        )
-    for z, (name, visual_type, query_state, x, y, width, height) in enumerate(visuals):
-        write_json(
-            page / "visuals" / name / "visual.json",
-            {
-                "$schema": SCHEMA + "report/definition/visualContainer/2.1.0/schema.json",
-                "name": name,
-                "position": {
-                    "x": x,
-                    "y": y,
-                    "z": z,
-                    "tabOrder": z,
-                    "width": width,
-                    "height": height,
+            for n in ("scenario", "metric_name", "display_value", "state", "availability", "unit")
+        ]
+        comparable = [field("metric_name", entity="NativeScores")] + [
+            field(m["name"], True, "NativeScores") for m in native_measures
+        ]
+        native_visuals = [
+            ("native_table", "tableEx", {"Values": {"projections": every_row}}, 0, 0, 1260, 380),
+            ("native_comparable_table", "tableEx", {"Values": {"projections": comparable}}, 0, 400, 1260, 300),
+        ]
+        if metrics:
+            pages["native"] = native_visuals
+            write_json(
+                page.parent / "native" / "page.json",
+                {
+                    "$schema": SCHEMA + "report/definition/page/2.0.0/schema.json",
+                    "name": "native",
+                    "displayName": "Native whole-run scores",
+                    "displayOption": "FitToPage",
+                    "height": 900,
+                    "width": 1280,
                 },
-                "visual": {"visualType": visual_type, "query": {"queryState": query_state}},
-            },
-        )
+            )
+            write_json(
+                page.parent / "pages.json",
+                {
+                    "$schema": SCHEMA + "report/definition/pagesMetadata/1.0.0/schema.json",
+                    "pageOrder": ["comparison", "native"],
+                    "activePageName": "comparison",
+                },
+            )
+        else:
+            pages["comparison"] = native_visuals
+    for page_name, page_visuals in pages.items():
+        for z, (name, visual_type, query_state, x, y, width, height) in enumerate(page_visuals):
+            write_json(
+                page.parent / page_name / "visuals" / name / "visual.json",
+                {
+                    "$schema": SCHEMA + "report/definition/visualContainer/2.1.0/schema.json",
+                    "name": name,
+                    "position": {"x": x, "y": y, "z": z, "tabOrder": z, "width": width, "height": height},
+                    "visual": {"visualType": visual_type, "query": {"queryState": query_state}},
+                },
+            )
     (directory / "OPEN-IN-DESKTOP.txt").write_text(
         "Install the independently authored ResultsToolkit.mez connector following docs/powerbi.md. "
         "Open Results.pbip; enroll the token once in Power Query's Key credential dialog for this origin. "
