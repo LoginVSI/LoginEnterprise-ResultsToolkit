@@ -4,10 +4,18 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Desktop acceptance of native candidates, 2026-11-04
+
+Partial runtime results, recorded exactly. The LE-PBI session released Desktop, the connector was replaced with a hash check and backup (only `ResultsToolkit.mez`), and working copies of the candidates were used.
+- Snapshot (synthetic): refreshed in Desktop's engine and queried. EUX 7 to 8.5 with change 1.50 and 21.43 percent, both states completed; VSImax shown as `>6` on both sides with no numeric change; the blank steady-state value stays blank, not zero; 8 native rows. The rendered snapshot visuals were not reviewed beyond a partial capture.
+- Live (private copy, two retained completed Load runs): the first refresh failed, and the cause was the stale Power BI Key token (rejected with 401), not the data. The owner replaced the Key and the first refresh then loaded 8 rows. Each row (value, state, run identity, grain) matched the retained captures and the live API responses, which were byte-identical to them: EUX-disabled run blank with state `disabled`; EUX-enabled run 8.2, 8.4 and 8.3 `completed`; VSImax 6 `aboveThreshold` shown as `>6`; one row per side per metric; no change value because the baseline is not completed. A second refresh (through Desktop's local engine) gave a new capture time and the same rows. The project definition persisted across close and reopen (data is not stored in a project file, so it refreshed again).
+- Two defects were found and fixed (see [the record](bug-hunt-2026-11-04.md)): a misleading error for a rejected credential, and a table that hid rows with blank measures. The final connector build refreshed the live copy after the fix.
+- Not shown: Power BI Service or gateway refresh, a new-data refresh, and any non-Windows or standard-user run. The Desktop refreshes after the first used Desktop's local engine rather than the Refresh button.
+
 ### Bug hunt and closeout, 2026-11-04
 
 - One finite self-review ([record](bug-hunt-2026-11-04.md)) found and fixed a medium issue: native-only live projects no longer carry the ten-session-bound timer query. A zero-baseline message was also corrected. Added the [metric guide](metric-guide.md) and a short Patch Validation Gate cross-reference. SECURITY.md was deliberately not added: GitHub private vulnerability reporting is not enabled for this repository, so there is no verified private route to name.
-- Power BI Desktop acceptance of the native snapshot and live candidate is still pending. Desktop was not released, so nothing was opened or installed.
+- Desktop acceptance of the native candidates ran later the same day; see the section above.
 
 ### Grafana demo acceptance, 2026-11-02
 

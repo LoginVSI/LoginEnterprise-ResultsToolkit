@@ -355,7 +355,13 @@ def test_native_only_live_project_has_no_timer_query_and_leaves_timing_projects_
     assert all("AVERAGE" not in e and "SUM(" not in e for e in measures.values())
     assert all('"completed"' in measures[n] for n in ("Baseline Native Score", "Candidate Native Score"))
     visuals = tmp_path / "native/Results.Report/definition/pages/comparison/visuals"
-    assert [d.name for d in visuals.iterdir()] == ["native_table"]
+    assert sorted(d.name for d in visuals.iterdir()) == ["native_comparable_table", "native_table"]
+    # Power BI drops table rows whose measures are all blank, which would hide disabled and
+    # above-threshold rows. The all-rows table must therefore carry columns only.
+    all_rows = json.loads((visuals / "native_table/visual.json").read_text())
+    projections = all_rows["visual"]["query"]["queryState"]["Values"]["projections"]
+    assert projections and all("Measure" not in p["field"] for p in projections)
+    assert {"display_value", "state", "availability"} <= {p["nativeQueryRef"] for p in projections}
 
     plain = json.loads((ROOT / "examples/live-report.json").read_text())
     build_live_report(plain, tmp_path / "plain")
@@ -374,6 +380,9 @@ def test_native_live_mixed_config_keeps_timer_visuals_and_splits_acquisition(tmp
     assert [m["table"] for m in query["metrics"]] == ["measurements"]
     assert (tmp_path / "Results.Report/definition/pages/comparison/visuals/comparison_table").exists()
     assert (tmp_path / "Acquisition.pq").exists()
+    pages = tmp_path / "Results.Report/definition/pages"
+    assert (pages / "native/visuals/native_table/visual.json").exists()
+    assert json.loads((pages / "pages.json").read_text())["pageOrder"] == ["comparison", "native"]
 
 
 @pytest.mark.parametrize(
@@ -408,3 +417,11 @@ def test_connector_native_function_guards_identity_state_and_never_aggregates():
         assert guard in source, guard
     assert "List.Average" not in native and "List.Sum" not in native and "Number.Round" not in native
     assert "load-test-run-overview/" in native
+
+
+def test_connector_names_a_rejected_credential_instead_of_comparing_a_null_status():
+    source = (ROOT / "adapters/powerbi/ResultsToolkit.pq").read_text()
+    # Observed in Desktop: a rejected token yields Response.Status = null, which previously reached
+    # "status >= 300" and failed with "cannot convert the value null to type Logical".
+    assert 'if s = null then error Error.Record("Authentication"' in source
+    assert source.index('"Authentication"') < source.index("status >= 300 and status < 400")
