@@ -67,6 +67,16 @@ NATIVE_FIELDS = (
 )
 
 
+def _native_reason(row: dict[str, Any]) -> str:
+    if (
+        row.get("baseline_state") == row.get("candidate_state") == "completed"
+        and row.get("baseline_mean") == 0
+        and row.get("candidate_mean") is not None
+    ):
+        return "zero baseline, relative change undefined"
+    return "native state is not completed, or value missing"
+
+
 def _coverage_table(coverage: list[dict[str, Any]]) -> str:
     """Readable coverage for native reports; nested values stay as compact JSON text."""
     keys = [k for k in dict.fromkeys(k for row in coverage for k in row) if k != "scenario"]
@@ -661,7 +671,7 @@ def build_report(
         label = html.escape(row["metric_group"])
         y = i * 48
         if delta is None:
-            bars += f'<text x="0" y="{y + 16}">{label}: relative change unavailable ({"native state is not completed, or value missing" if row.get("grain") == "native_whole_run" else "missing or zero baseline"})</text>'
+            bars += f'<text x="0" y="{y + 16}">{label}: relative change unavailable ({_native_reason(row) if row.get("grain") == "native_whole_run" else "missing or zero baseline"})</text>'
         else:
             width = min(abs(delta), 100) * 3
             x = 350 - width if delta < 0 else 350

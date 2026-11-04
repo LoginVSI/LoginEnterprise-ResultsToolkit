@@ -342,21 +342,20 @@ def _native_live_config():
     return json.loads((ROOT / "examples/live-native-report.json").read_text())
 
 
-def test_native_live_project_adds_a_separate_table_and_leaves_timing_projects_alone(tmp_path):
+def test_native_only_live_project_has_no_timer_query_and_leaves_timing_projects_alone(tmp_path):
     build_live_report(_native_live_config(), tmp_path / "native")
     model = check_references(tmp_path / "native")
     tables = {t["name"]: t for t in model["model"]["tables"]}
-    assert set(tables) == {"Results", "NativeScores"}
+    # Native-only must not query sessions/executions (bounded to ten); a Load result often exceeds that.
+    assert set(tables) == {"NativeScores"}
+    assert not (tmp_path / "native/Acquisition.pq").exists()
     assert "ResultsToolkit.Native(" in (tmp_path / "native/NativeAcquisition.pq").read_text()
-    results_query = (tmp_path / "native/Acquisition.pq").read_text()
-    assert "native_scores" not in results_query  # aggregate/timestamped rows stay separate
     measures = {m["name"]: m["expression"] for m in tables["NativeScores"]["measures"]}
     assert set(measures) == {"Baseline Native Score", "Candidate Native Score", "Native Change"}
     assert all("AVERAGE" not in e and "SUM(" not in e for e in measures.values())
     assert all('"completed"' in measures[n] for n in ("Baseline Native Score", "Candidate Native Score"))
-    visuals = (tmp_path / "native/Results.Report/definition/pages/comparison/visuals")
-    assert (visuals / "native_table/visual.json").exists()
-    assert not (visuals / "comparison_table").exists()  # native-only: no empty timer visuals
+    visuals = tmp_path / "native/Results.Report/definition/pages/comparison/visuals"
+    assert [d.name for d in visuals.iterdir()] == ["native_table"]
 
     plain = json.loads((ROOT / "examples/live-report.json").read_text())
     build_live_report(plain, tmp_path / "plain")
@@ -374,6 +373,7 @@ def test_native_live_mixed_config_keeps_timer_visuals_and_splits_acquisition(tmp
     )
     assert [m["table"] for m in query["metrics"]] == ["measurements"]
     assert (tmp_path / "Results.Report/definition/pages/comparison/visuals/comparison_table").exists()
+    assert (tmp_path / "Acquisition.pq").exists()
 
 
 @pytest.mark.parametrize(

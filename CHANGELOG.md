@@ -2,6 +2,8 @@
 
 ## Community preview, unreleased
 
+- Native-only live Power BI projects no longer include the timer query (which is bounded to ten sessions); a zero native baseline now says so. Add a metric guide, a bug-hunt record and a short Patch Validation Gate cross-reference.
+
 - Record owner-reported acceptance of the local synthetic Grafana and InfluxDB 3 demo (dashboard, selectors, refresh, companion report counts). It does not cover production, automatic ingestion or scheduled refresh.
 
 - Raise the development-only pypdf pin to 6.21.4 (official hashes) after new advisories; runtime dependencies are unchanged.

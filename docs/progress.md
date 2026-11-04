@@ -4,6 +4,11 @@ This public, unsupported community preview reduces repeated retrieval and report
 
 ## Current checkpoint
 
+### Bug hunt and closeout, 2026-11-04
+
+- One finite self-review ([record](bug-hunt-2026-11-04.md)) found and fixed a medium issue: native-only live projects no longer carry the ten-session-bound timer query. A zero-baseline message was also corrected. Added the [metric guide](metric-guide.md) and a short Patch Validation Gate cross-reference. SECURITY.md was deliberately not added: GitHub private vulnerability reporting is not enabled for this repository, so there is no verified private route to name.
+- Power BI Desktop acceptance of the native snapshot and live candidate is still pending. Desktop was not released, so nothing was opened or installed.
+
 ### Grafana demo acceptance, 2026-11-02
 
 - Owner-reported local synthetic-demo acceptance of the Grafana and InfluxDB 3 example: The owner reported that the synthetic dashboard rendered, the action and result selectors worked and Refresh left the values unchanged. The companion HTML showed 9 candidate executions, 8 successes, 1 failure and 1 missing timing, and Export workbook showed 3 baseline timing points and 2 candidate points. Not extended to production, automatic ingestion or scheduled refresh. PR 6 (`9f320d5`) carries the dashboard changes; main CI passed.

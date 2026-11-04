@@ -143,7 +143,10 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         + m_string(json.dumps(acquisition, ensure_ascii=True))
         + ")"
     )
-    (directory / "Acquisition.pq").write_text(query + "\n", encoding="utf-8")
+    # A native-only project never queries sessions, executions or events, which the timing
+    # connector bounds to ten sessions; a real Load result routinely exceeds that.
+    if metrics or not native_metrics:
+        (directory / "Acquisition.pq").write_text(query + "\n", encoding="utf-8")
     native_query = (
         "ResultsToolkit.Native("
         + m_string(origin)
@@ -307,6 +310,8 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
         },
     }
     native_measures: list[dict[str, str]] = []
+    if native_metrics and not metrics:
+        model["model"]["tables"] = []
     if native_metrics:
         completed = 'NativeScores[state] = "completed"'
 
@@ -455,10 +460,10 @@ def build_live_report(config: dict[str, Any], directory: Path) -> None:
             for n in ("scenario", "metric_name", "display_value", "state", "unit")
         ] + [field(m["name"], True, "NativeScores") for m in native_measures]
         if not metrics:
-            # Native-only: the timer visuals would be empty, so keep coverage and add the native table.
-            visuals = [(*visuals[3][:3], 0, 450, 1260, 350)]
+            # Native-only: no Results table exists, so only the native table is shown.
+            visuals = []
         visuals.append(
-            ("native_table", "tableEx", {"Values": {"projections": native_values}}, 0, 810 if metrics else 0, 1260, 300 if metrics else 430)
+            ("native_table", "tableEx", {"Values": {"projections": native_values}}, 0, 810 if metrics else 0, 1260, 300 if metrics else 600)
         )
     for z, (name, visual_type, query_state, x, y, width, height) in enumerate(visuals):
         write_json(
