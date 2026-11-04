@@ -37,10 +37,15 @@ Follow the [setup path](docs/quickstart.md), [readiness bootstrap](scripts/Test-
 - [Power BI snapshot and refreshable reporting](docs/powerbi.md)
 - [Synthetic application review and meeting refinement](docs/review-demo.md)
 - [Data dictionary and comparison rules](docs/data-dictionary.md)
+- [Metric guide and coverage matrix](docs/metric-guide.md)
 - [Architecture and tradeoffs](docs/architecture.md)
 - [API/reference provenance](docs/api-notes.md)
 - [Credential handling and troubleshooting](docs/troubleshooting.md)
 - [Portable AI workflows and no-AI equivalents](docs/ai-workflows.md)
+
+## Related project
+
+[Login Enterprise Patch Validation Gate](https://github.com/LoginVSI/LoginEnterprise-PatchValidationGate) is a separate PowerShell reference implementation. It gates a Windows lab change on existing Login Enterprise application tests and returns a PASS, FAIL or INCONCLUSIVE verdict with an integrity-checked evidence bundle. A functional PASS there is not a performance approval, and its promotion step is simulated. Its bundle schema is not this toolkit's capture schema and there is no importer. If you want a comparison report for the same runs, give their explicit run IDs to this toolkit's own read-only acquisition after checking that the runs are compatible. AI helpers explain results and never override a verdict or an approval.
 - [Prompt gallery](docs/prompt-gallery.md)
 - [Read-only live acceptance](docs/live-validation.md)
 - [Customer workflows and failure behavior](docs/customer-workflows.md)
