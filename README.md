@@ -57,4 +57,4 @@ Follow the [setup path](docs/quickstart.md), [readiness bootstrap](scripts/Test-
 
 Licensed under [MIT](LICENSE), copyright Login VSI. This remains an unsupported community preview. Upstream reuse rights are separate; this toolkit copies no source or assets from LE-PBI-Connector.
 
-Read the published [first article](https://www.linkedin.com/pulse/make-login-enterprise-comparisons-easier-repeat-weekly-joshua-kennedy-ujehc) for the motivation. The practical follow-up is being prepared; no Blog B publication is claimed.
+Read the published [first article](https://www.linkedin.com/pulse/make-login-enterprise-comparisons-easier-repeat-weekly-joshua-kennedy-ujehc) for the motivation and the owner-reported published [follow-up on adapting the report while keeping the evidence](https://www.linkedin.com/pulse/adapt-report-keep-evidence-workspace-weekly-joshua-kennedy-ktpnc/). Later native-score, PDF and job articles remain separate publication work.
