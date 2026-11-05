@@ -230,3 +230,7 @@ The final code checkpoint `1946dee` passes the complete [push matrix](https://gi
 Resume from this file and AGENTS.md. Private state stays ignored; do not copy the original assignment or personal environment details into public content. Safe blog evidence/asset ideas are in ai-workflows.md; neither blog has been published.
 
 20 October runtime reconciliation: actual read-only Desktop DAX queries match source mean/sample/failure counts for the fixed window. The row-scoped mean works; generator aggregate guard now excludes metadata keys and was tested in query scope with blank missing/zero outcomes. Existing owner-edited model metadata is unchanged. certifi was updated in both locks to the audited fix from official hashes. Focused source-review findings are preserved and addressed, including titleless finite specs, installer hash/rollback and explicit file-unblocking behavior. Current source, standalone M parsing and actual Desktop/owner states remain distinct.
+
+## Backlog re-test, 4 November 2026
+
+Ran what this workstation can: tests (243 passed, 1 skipped), ruff, mypy, real-Edge PDF tests, appliance `doctor`, and a scheduler-launched `job run` (temporary task, exit 0, verified PDF, removed). Continuous discovery listed 20 tests, all disabled, so no fresh observations were possible. Service/gateway, Linux/macOS/ARM and Mashup negative cases remain untested (no tenant, host or further Desktop run).
